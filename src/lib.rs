@@ -3,18 +3,28 @@ extern crate lazy_static;
 
 pub mod scanner;
 pub mod token;
+pub mod parser;
 
 use std::error::Error;
 use std::fs::File;
 use std::io::{self, prelude::*, stdout, BufReader, Write};
 
 pub fn run_file(path: &str) -> Result<(), Box<dyn Error>> {
+    // rust feature: file automatically closed once out of scope
     let f = File::open(path)?;
-    let f = BufReader::new(f);
+    let mut f = BufReader::new(f);
+    let mut line = 1;
+    let mut f_string : String = String::new();
+    f.read_to_string(&mut f_string)?;
+    let tokens = scanner::scan_tokens(&f_string, &mut line)?;
 
-    for line in f.lines() {
-        println!("{}", line.unwrap());
-    }
+    println!("{:?}", tokens);
+    // for i in tokens.iter() {
+    //     println!("{}", i);
+    // }
+    let a = parser::parse_tree(&tokens);
+    println!("{:?}", a.eval());
+
     Ok(())
 }
 
@@ -37,10 +47,9 @@ pub fn run_prompt() -> Result<(), Box<dyn Error>> {
 }
 
 pub fn help() {
-    let msg = r#"
-usage:  lox [script] [-h]
+    let msg = 
+r#"usage:  lox [script] [-h]
         lox # start interactive shell
-        lox script.lox # run script file
-    "#;
+        lox script.lox # run script file"#;
     println!("{}", msg);
 }

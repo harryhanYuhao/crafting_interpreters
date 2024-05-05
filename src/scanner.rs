@@ -1,6 +1,7 @@
 use crate::token::{Token, TokenType};
 use std::collections::HashMap;
 use std::error::Error;
+use std::rc::Rc;
 
 lazy_static! {
     static ref KEYWORDS: HashMap<String, TokenType> = {
@@ -26,8 +27,8 @@ lazy_static! {
     };
 }
 
-pub fn scan_tokens(source: &str, line: &mut u32) -> Result<Vec<Token>, Box<dyn Error>> {
-    let mut token_vec = Vec::new();
+pub fn scan_tokens(source: &str, line: &mut u32) -> Result<Vec<Rc<Token>>, Box<dyn Error>> {
+    let mut token_vec: Vec<Rc<Token>> = Vec::new();
     let mut start: usize = 0;
     let mut current: usize = 0;
     let source_vec = source.chars().collect::<Vec<char>>();
@@ -36,7 +37,7 @@ pub fn scan_tokens(source: &str, line: &mut u32) -> Result<Vec<Token>, Box<dyn E
     while current < num_of_chars {
         start = current;
         if let Some(token) = scan_iteration(&source_vec, start, &mut current, line) {
-            token_vec.push(token);
+            token_vec.push(Rc::new(token));
         }
     }
     Ok(token_vec)
@@ -152,15 +153,15 @@ fn scan_iteration(
         | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z' | 'A' | 'B' | 'C'
         | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q'
         | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' => {
-            while source_vec[poke].is_alphanumeric() && source_vec[poke].is_ascii()
-                || source_vec[poke] == '_' && poke < source_vec.len()
+            while (source_vec[poke].is_alphanumeric() 
+                || source_vec[poke] == '_') && poke < source_vec.len()
             {
                 poke += 1;
             }
             let tmp = get_string(start, poke, source_vec);
             let mut token_type: TokenType = TokenType::IDENTIFIER;
-            if let Some(tmp) = KEYWORDS.get(&tmp) {
-                token_type = (*tmp).clone();
+            if let Some(token) = KEYWORDS.get(&tmp) {
+                token_type = (*token).clone();
             }
             token = Token::new(token_type, tmp, *line);
         }
@@ -177,7 +178,10 @@ fn scan_iteration(
         }
         '/' => {
             if source_vec[poke] == '/' {
-                *current = source_vec.len();
+                while source_vec[poke] != '\n' && poke < source_vec.len(){
+                    poke += 1;
+                }
+                *current = poke;
                 return None;
             }
             token = Token::new(TokenType::SLASH, String::from(source_vec[start]), *line)

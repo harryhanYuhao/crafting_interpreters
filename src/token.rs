@@ -1,4 +1,4 @@
-use std::fmt::{self, Display};
+use std::fmt;
 
 #[allow(dead_code, unused_variables, non_camel_case_types)]
 #[derive(Clone, Copy)]
@@ -50,7 +50,7 @@ pub enum TokenType {
     EOF,
 }
 
-impl Display for TokenType {
+impl fmt::Display for TokenType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut tmp = String::new();
         match self {
@@ -101,15 +101,29 @@ impl Display for TokenType {
 }
 
 pub struct Token {
-    token_type: TokenType,
-    lexeme: String,
+    pub token_type: TokenType,
+    pub lexeme: String,
     // literal: String,
-    line: u32,
+    pub line: u32,
 }
 
-impl Display for Token {
+impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}; {}; l#: {}", self.token_type, self.lexeme, self.line)
+        write!(
+            f,
+            "{}   {}; l#: {}",
+            self.lexeme, self.token_type, self.line
+        )
+    }
+}
+
+impl fmt::Debug for Token {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}   {}; l#: {}",
+            self.lexeme, self.token_type, self.line
+        )
     }
 }
 
