@@ -1,90 +1,157 @@
 use crate::token;
+use std::error::Error;
 use std::fmt;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
+use token::{Token, TokenType};
 
 #[derive(Debug)]
-enum Pumo {
-    STATEMENT,
-    EXPRESSION,
-}
-
-pub trait Leaf {}
-
-pub trait LeafExpressionEval {
-    fn eval(&self) -> i64;
-}
-
-impl fmt::Debug for dyn LeafExpressionEval {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a")
-    }
+pub enum TreeType {
+    EXPR, // expression
+    STMT, // statement
 }
 
 #[derive(Debug)]
-struct TerminalExpr {
-    token: Rc<token::Token>,
-    pumo: Pumo,
+pub struct Tree {
+    // expr: short for expression
+    // If it is not an expression, it is a statment.
+    tree_type: TreeType,
+    token: Arc<Mutex<token::Token>>,
+    left: Option<Arc<Mutex<Tree>>>,
+    right: Option<Arc<Mutex<Tree>>>,
 }
 
-impl TerminalExpr {
-    /// Creates a new [`TerminalExpr`].
-    fn new(token: Rc<token::Token>) -> TerminalExpr {
-        TerminalExpr {
-            token: token.clone(),
-            pumo: Pumo::EXPRESSION,
+impl fmt::Display for Tree {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn recurse_print(tree: &Tree, padding: usize) -> Vec<String> {
+            let mut res: Vec<String> = vec![];
+            res.push(format!("{:?}", tree.token.lock()));
+            if tree.left.is_some() {
+                let left_tmp = tree.left.as_ref().unwrap().clone();
+                let left_lock = &(left_tmp.lock().unwrap());
+                let tmp = recurse_print(left_lock, padding + 1);
+                let mut i = 0;
+                loop {
+                    if i == tmp.len() {
+                        break;
+                    }
+                    if i == 0 {
+                        // res.push(" | ".into());
+                        let mut to_push = String::from(" |-");
+                        to_push.push_str(&tmp[i]);
+                        res.push(to_push);
+                    }
+                    let mut to_push = String::new();
+                    if tree.right.is_some() {
+                        to_push.push_str(" | ".into());
+                    } else {
+                        to_push.push_str("   ".into());
+                    }
+                    i += 1;
+                }
+            };
+            if tree.right.is_some() {
+                let left_tmp = tree.right.as_ref().unwrap().clone();
+                let left_lock = &(left_tmp.lock().unwrap());
+                let tmp = recurse_print(left_lock, padding + 1);
+                let mut i = 0;
+                loop {
+                    if i == tmp.len() {
+                        break;
+                    }
+                    if i == 0 {
+                        // res.push(" | ".into());
+                        let mut to_push = String::from(" |-");
+                        to_push.push_str(&tmp[i]);
+                        res.push(to_push);
+                    }
+                    let mut to_push = String::new();
+                    to_push.push_str("   ".into());
+                    i += 1;
+                }
+            }
+            res
         }
-    }
-}
-impl Leaf for TerminalExpr {}
-impl LeafExpressionEval for TerminalExpr {
-    // TODO: error handling
-    fn eval(&self) -> i64 {
-        self.token.lexeme.parse().unwrap()
-    }
-}
 
-#[derive(Debug)]
-struct AddNonTerminal {
-    left: Rc<dyn LeafExpressionEval>,
-    right: Rc<dyn LeafExpressionEval>,
-    pumo: Pumo,
-}
-
-impl AddNonTerminal {
-    fn new(left: Rc<dyn LeafExpressionEval>, right: Rc<dyn LeafExpressionEval>) -> AddNonTerminal {
-        AddNonTerminal {
-            left,
-            right,
-            pumo: Pumo::EXPRESSION,
+        // a vector of string. Each one represents a new line
+        let ret_vec = recurse_print(self, 0);
+        let mut ret_str: String = String::new();
+        for i in ret_vec.iter() {
+            ret_str.push_str(i);
+            ret_str.push_str("\n");
         }
+        // no need to check if empty. pop return none if empty
+        ret_str.pop(); // remove the last newline
+        write!(f, "{}", ret_str)
     }
 }
 
-impl LeafExpressionEval for AddNonTerminal {
-    fn eval(&self) -> i64 {
-        self.left.eval() + self.right.eval()
-    }
-}
+impl Tree {
+    // only eval expression
+    fn eval(&self) -> Result<f64, Box<dyn Error>> {
+        if matches!(self.tree_type, TreeType::STMT) {
+            return Err("Not An Expression".into());
+        }
 
-impl Leaf for AddNonTerminal {}
-
-pub fn parse_tree(tokens: &Vec<Rc<token::Token>>) -> Rc<dyn LeafExpressionEval> {
-    let vec_len = tokens.len();
-
-    // end of recursion
-    if vec_len == 1 {
-        return Rc::new(TerminalExpr::new(tokens[0].clone()));
-    }
-    for i in 0..vec_len {
-        match tokens[i].token_type {
-            token::TokenType::PLUS => {
-                return Rc::new(AddNonTerminal::new(
-                    parse_tree(&tokens[..i].to_vec()),
-                    parse_tree(&tokens[i + 1..].to_vec()),
-                ))
+        let token = self.token.lock().unwrap();
+        match token.token_type {
+            TokenType::NUMBER => {
+                return Ok(token.lexeme.parse::<f64>()?);
+            }
+            TokenType::PLUS => {
+                let mut res: f64 = 0.0;
+                match &self.left {
+                    Some(child) => {
+                        res += child.lock().unwrap().eval()?;
+                    }
+                    None => return Err("No Child_1!".into()),
+                };
+                match &self.right {
+                    Some(child) => {
+                        res += child.lock().unwrap().eval()?;
+                    }
+                    None => return Err("No Child_1!".into()),
+                };
+                return Ok(res);
             }
             _ => {}
         }
+        Err("None".into())
     }
-    Rc::new(TerminalExpr::new(tokens[0].clone()))
+
+    fn new(
+        tree_type: TreeType,
+        token: Arc<Mutex<token::Token>>,
+        left: Option<Arc<Mutex<Tree>>>,
+        right: Option<Arc<Mutex<Tree>>>,
+    ) -> Self {
+        Tree {
+            tree_type,
+            token,
+            left,
+            right,
+        }
+    }
+
+    fn new_terminal_node(token: Arc<Mutex<token::Token>>) -> Self {
+        Tree {
+            tree_type: TreeType::EXPR,
+            token,
+            left: None,
+            right: None,
+        }
+
+    }
+
+    fn parse(tokens: &[Arc<Mutex<Token>>]) -> Option<Arc<Mutex<Tree>>> {
+        let mut left: Option<Tree> = None;
+        for (i, token) in tokens.iter().enumerate() {
+            match token.lock().unwrap().token_type {
+                TokenType::NUMBER => {
+
+                }
+                _ => {}
+            }
+        }
+        Some(Arc::new(Mutex::new(left.unwrap())))
+    }
 }

@@ -1,9 +1,9 @@
 #[macro_use]
 extern crate lazy_static;
 
+pub mod parser;
 pub mod scanner;
 pub mod token;
-pub mod parser;
 
 use std::error::Error;
 use std::fs::File;
@@ -14,20 +14,18 @@ pub fn run_file(path: &str) -> Result<(), Box<dyn Error>> {
     let f = File::open(path)?;
     let mut f = BufReader::new(f);
     let mut line = 1;
-    let mut f_string : String = String::new();
+    let mut f_string: String = String::new();
     f.read_to_string(&mut f_string)?;
     let tokens = scanner::scan_tokens(&f_string, &mut line)?;
 
-    println!("{:?}", tokens);
-    // for i in tokens.iter() {
-    //     println!("{}", i);
-    // }
-    let a = parser::parse_tree(&tokens);
-    println!("{:?}", a.eval());
+    for i in tokens.iter() {
+        println!("{:?}", i);
+    }
 
     Ok(())
 }
 
+// TODO: add raw mode
 pub fn run_prompt() -> Result<(), Box<dyn Error>> {
     let msg = r#"Welcome to Lox programming language"#;
     println!("{}", msg);
@@ -39,7 +37,7 @@ pub fn run_prompt() -> Result<(), Box<dyn Error>> {
         io::stdin().read_line(&mut buffer)?;
         let tokens = scanner::scan_tokens(&buffer, &mut line).unwrap();
         for i in tokens {
-            println!("{}", i);
+            println!("{:?}", i);
         }
         buffer.clear();
     }
@@ -47,8 +45,7 @@ pub fn run_prompt() -> Result<(), Box<dyn Error>> {
 }
 
 pub fn help() {
-    let msg = 
-r#"usage:  lox [script] [-h]
+    let msg = r#"usage:  lox [script] [-h]
         lox # start interactive shell
         lox script.lox # run script file"#;
     println!("{}", msg);

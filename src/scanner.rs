@@ -1,7 +1,8 @@
 use crate::token::{Token, TokenType};
 use std::collections::HashMap;
 use std::error::Error;
-use std::rc::Rc;
+use std::sync::Arc;
+use std::sync::Mutex;
 
 lazy_static! {
     static ref KEYWORDS: HashMap<String, TokenType> = {
@@ -27,8 +28,8 @@ lazy_static! {
     };
 }
 
-pub fn scan_tokens(source: &str, line: &mut u32) -> Result<Vec<Rc<Token>>, Box<dyn Error>> {
-    let mut token_vec: Vec<Rc<Token>> = Vec::new();
+pub fn scan_tokens(source: &str, line: &mut u32) -> Result<Vec<Arc<Mutex<Token>>>, Box<dyn Error>> {
+    let mut token_vec: Vec<Arc<Mutex<Token>>> = Vec::new();
     let mut start: usize = 0;
     let mut current: usize = 0;
     let source_vec = source.chars().collect::<Vec<char>>();
@@ -37,7 +38,7 @@ pub fn scan_tokens(source: &str, line: &mut u32) -> Result<Vec<Rc<Token>>, Box<d
     while current < num_of_chars {
         start = current;
         if let Some(token) = scan_iteration(&source_vec, start, &mut current, line) {
-            token_vec.push(Rc::new(token));
+            token_vec.push(Arc::new(Mutex::new(token)));
         }
     }
     Ok(token_vec)
