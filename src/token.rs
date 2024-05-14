@@ -1,4 +1,5 @@
-use std::collections::{HashSet, HashMap};
+use rand::prelude::*;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 // Grammar of the token: see docs/grammar.md
@@ -50,6 +51,54 @@ pub enum TokenType {
     VAR,
     WHILE,
     EOF,
+}
+
+lazy_static! {
+    static ref NUMBERRED_TB: HashMap<usize, TokenType> = {
+        HashMap::from([
+            (0, TokenType::LEFT_PAREN),
+            (1, TokenType::RIGHT_PAREN),
+            (2, TokenType::LEFT_BRACE),
+            (3, TokenType::RIGHT_BRACE),
+            (4, TokenType::LEFT_BRACKET),
+            (5, TokenType::RIGHT_BRACKET),
+            (6, TokenType::COMMA),
+            (7, TokenType::DOT),
+            (8, TokenType::MINUS),
+            (9, TokenType::PLUS),
+            (10, TokenType::SEMICOLON),
+            (11, TokenType::SLASH),
+            (12, TokenType::STAR),
+            (13, TokenType::BANG),
+            (14, TokenType::BANG_EQUAL),
+            (15, TokenType::EQUAL),
+            (16, TokenType::EQUAL_EQUAL),
+            (17, TokenType::GREATER),
+            (18, TokenType::GREATER_EQUAL),
+            (19, TokenType::LESS),
+            (20, TokenType::LESS_EQUAL),
+            (21, TokenType::IDENTIFIER),
+            (22, TokenType::STRING),
+            (23, TokenType::NUMBER),
+            (24, TokenType::AND),
+            (25, TokenType::CLASS),
+            (26, TokenType::ELSE),
+            (27, TokenType::FALSE),
+            (28, TokenType::FUN),
+            (29, TokenType::FOR),
+            (30, TokenType::IF),
+            (31, TokenType::NIL),
+            (32, TokenType::OR),
+            (33, TokenType::PRINT),
+            (34, TokenType::RETURN),
+            (35, TokenType::SUPER),
+            (36, TokenType::THIS),
+            (37, TokenType::TRUE),
+            (38, TokenType::VAR),
+            (39, TokenType::WHILE),
+            (40, TokenType::EOF),
+        ])
+    };
 }
 
 lazy_static! {
@@ -121,6 +170,14 @@ impl fmt::Debug for TokenType {
     }
 }
 
+impl TokenType {
+    fn random() -> Self {
+        let mut rng = rand::thread_rng();
+        let n = rng.gen_range(0..NUMBERRED_TB.len());
+        *NUMBERRED_TB.get(&n).unwrap()
+    }
+}
+
 pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
@@ -132,8 +189,8 @@ impl fmt::Debug for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{}   {:?}; l#: {}",
-            self.lexeme, self.token_type, self.line
+            "({}   {:?})",
+            self.lexeme, self.token_type
         )
     }
 }
@@ -144,6 +201,14 @@ impl Token {
             token_type,
             lexeme,
             line,
+        }
+    }
+
+    pub fn random() -> Self {
+        Token {
+            token_type: TokenType::random(),
+            lexeme: String::from("DUMMY"),
+            line: 0,
         }
     }
 

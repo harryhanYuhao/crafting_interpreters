@@ -1,6 +1,6 @@
 use crate::token;
 use std::error::Error;
-use std::fmt;
+use std::fmt::{self, write};
 use std::sync::{Arc, Mutex};
 use token::{Token, TokenType};
 
@@ -22,58 +22,47 @@ pub struct Tree {
 
 impl fmt::Display for Tree {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fn recurse_print(tree: &Tree, padding: usize) -> Vec<String> {
+        fn recurse_print(tree: &Tree) -> Vec<String> {
             let mut res: Vec<String> = vec![];
-            res.push(format!("{:?}", tree.token.lock()));
+            res.push(format!("{:?}", tree.token.lock().unwrap()));
             if tree.left.is_some() {
-                let left_tmp = tree.left.as_ref().unwrap().clone();
-                let left_lock = &(left_tmp.lock().unwrap());
-                let tmp = recurse_print(left_lock, padding + 1);
-                let mut i = 0;
-                loop {
-                    if i == tmp.len() {
-                        break;
-                    }
+                let node = tree.left.as_ref().unwrap().clone();
+                let node = &(node.lock().unwrap());
+                for (i, content) in recurse_print(node).iter().enumerate() {
+                    let mut padding = String::new();
                     if i == 0 {
-                        // res.push(" | ".into());
-                        let mut to_push = String::from(" |-");
-                        to_push.push_str(&tmp[i]);
-                        res.push(to_push);
-                    }
-                    let mut to_push = String::new();
-                    if tree.right.is_some() {
-                        to_push.push_str(" | ".into());
+                        padding.push_str(" |-".into());
                     } else {
-                        to_push.push_str("   ".into());
+                        if tree.right.is_some() {
+                            padding.push_str(" | ".into());
+                        } else {
+                            padding.push_str("   ".into());
+                        }
                     }
-                    i += 1;
+                    padding.push_str(content);
+                    res.push(padding);
                 }
             };
+
             if tree.right.is_some() {
-                let left_tmp = tree.right.as_ref().unwrap().clone();
-                let left_lock = &(left_tmp.lock().unwrap());
-                let tmp = recurse_print(left_lock, padding + 1);
-                let mut i = 0;
-                loop {
-                    if i == tmp.len() {
-                        break;
-                    }
+                let node = tree.right.as_ref().unwrap().clone();
+                let node = &(node.lock().unwrap());
+                for (i, content) in recurse_print(node).iter().enumerate() {
+                    let mut padding = String::new();
                     if i == 0 {
-                        // res.push(" | ".into());
-                        let mut to_push = String::from(" |-");
-                        to_push.push_str(&tmp[i]);
-                        res.push(to_push);
+                        padding.push_str(" |-".into());
+                    } else {
+                        padding.push_str("   ".into());
                     }
-                    let mut to_push = String::new();
-                    to_push.push_str("   ".into());
-                    i += 1;
+                    padding.push_str(content);
+                    res.push(padding);
                 }
-            }
+            };
             res
         }
 
         // a vector of string. Each one represents a new line
-        let ret_vec = recurse_print(self, 0);
+        let ret_vec = recurse_print(self);
         let mut ret_str: String = String::new();
         for i in ret_vec.iter() {
             ret_str.push_str(i);
@@ -86,8 +75,28 @@ impl fmt::Display for Tree {
 }
 
 impl Tree {
+    pub fn random_expr(level: usize) -> Self {
+        if level == 0 {
+            Tree {
+                tree_type: TreeType::EXPR,
+                token: Arc::new(Mutex::new(Token::random())),
+                left: None,
+                right: None,
+            }
+        } else {
+            let left = Tree::random_expr(level - 1);
+            let right = Tree::random_expr(level - 1);
+            Tree {
+                tree_type: TreeType::EXPR,
+                token: Arc::new(Mutex::new(Token::random())),
+                left: Some(Arc::new(Mutex::new(left))),
+                right: Some(Arc::new(Mutex::new(right))),
+            }
+        }
+    }
+
     // only eval expression
-    fn eval(&self) -> Result<f64, Box<dyn Error>> {
+    pub fn eval(&self) -> Result<f64, Box<dyn Error>> {
         if matches!(self.tree_type, TreeType::STMT) {
             return Err("Not An Expression".into());
         }
@@ -139,19 +148,31 @@ impl Tree {
             left: None,
             right: None,
         }
-
     }
+}
 
-    fn parse(tokens: &[Arc<Mutex<Token>>]) -> Option<Arc<Mutex<Tree>>> {
-        let mut left: Option<Tree> = None;
-        for (i, token) in tokens.iter().enumerate() {
-            match token.lock().unwrap().token_type {
-                TokenType::NUMBER => {
-
-                }
-                _ => {}
+pub fn parse(tokens: &[Arc<Mutex<Token>>]) -> Option<Arc<Mutex<Tree>>> {
+    let mut left: Option<Tree> = None;
+    for (i, token) in tokens.iter().enumerate() {
+        let token_ref = token.lock().unwrap();
+        match token_ref.token_type {
+            TokenType::NUMBER => {
+                left = Some(Tree::new_terminal_node(token.clone()));
             }
+            TokenType::PLUS => {
+                if tokens.len() <= i + 1 {
+                    panic!("+ find at the end of sentence!");
+                }
+                let right = parse(&tokens[i + 1..]);
+                return Some(Arc::new(Mutex::new(Tree::new(
+                    TreeType::EXPR,
+                    token.clone(),
+                    Some(Arc::new(Mutex::new(left.unwrap()))),
+                    right,
+                ))));
+            }
+            _ => {}
         }
-        Some(Arc::new(Mutex::new(left.unwrap())))
     }
+    Some(Arc::new(Mutex::new(left.unwrap())))
 }

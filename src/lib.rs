@@ -18,9 +18,9 @@ pub fn run_file(path: &str) -> Result<(), Box<dyn Error>> {
     f.read_to_string(&mut f_string)?;
     let tokens = scanner::scan_tokens(&f_string, &mut line)?;
 
-    for i in tokens.iter() {
-        println!("{:?}", i);
-    }
+    let tree = parser::parse(&tokens).unwrap();
+    println!("Here is the tree!: \n{}", tree.lock().unwrap());
+    println!("Eval: {}", tree.lock().unwrap().eval().unwrap());
 
     Ok(())
 }
@@ -37,7 +37,7 @@ pub fn run_prompt() -> Result<(), Box<dyn Error>> {
         io::stdin().read_line(&mut buffer)?;
         let tokens = scanner::scan_tokens(&buffer, &mut line).unwrap();
         for i in tokens {
-            println!("{:?}", i);
+            println!("{:?}", i.lock().unwrap());
         }
         buffer.clear();
     }
