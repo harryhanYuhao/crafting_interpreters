@@ -15,12 +15,14 @@ pub enum TokenType {
     RIGHT_BRACKET,
     COMMA,
     DOT,
-    MINUS,
-    PLUS,
     SEMICOLON,
     SLASH,
     STAR,
     //One or two character tokens.
+    PLUS,
+    PLUS_EQUAL,
+    MINUS,
+    MINUS_EQUAL,
     BANG,
     BANG_EQUAL,
     EQUAL,
@@ -125,7 +127,9 @@ lazy_static! {
             (TokenType::COMMA, "COMMA"),
             (TokenType::DOT, "DOT"),
             (TokenType::MINUS, "MINUS"),
+            (TokenType::MINUS_EQUAL, "MINUS_EQUAL"),
             (TokenType::PLUS, "PLUS"),
+            (TokenType::PLUS_EQUAL, "PLUS_EQUAL"),
             (TokenType::SEMICOLON, "SEMICOLON"),
             (TokenType::SLASH, "SLASH"),
             (TokenType::STAR, "STAR"),
@@ -165,7 +169,7 @@ impl fmt::Debug for TokenType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match DEBUG_STRING.get(self) {
             Some(s) => write!(f, "{}", s),
-            None => write!(f, "UNKNOWN"),
+            None => write!(f, "UNKNOWN_TYPE FOR DEBUG TRAIT"),
         }
     }
 }
@@ -189,7 +193,7 @@ impl fmt::Debug for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "({}   {:?})",
+            "({:<4}{:?})",
             self.lexeme, self.token_type
         )
     }
