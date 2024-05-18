@@ -40,7 +40,7 @@ pub enum TokenType {
     CLASS,
     ELSE,
     FALSE,
-    FUN,
+    FN,
     FOR,
     IF,
     NIL,
@@ -86,7 +86,7 @@ lazy_static! {
             (25, TokenType::CLASS),
             (26, TokenType::ELSE),
             (27, TokenType::FALSE),
-            (28, TokenType::FUN),
+            (28, TokenType::FN),
             (29, TokenType::FOR),
             (30, TokenType::IF),
             (31, TokenType::NIL),
@@ -148,7 +148,7 @@ lazy_static! {
             (TokenType::CLASS, "CLASS"),
             (TokenType::ELSE, "ELSE"),
             (TokenType::FALSE, "FALSE"),
-            (TokenType::FUN, "FUN"),
+            (TokenType::FN, "FN"),
             (TokenType::FOR, "FOR"),
             (TokenType::IF, "IF"),
             (TokenType::NIL, "NIL"),
@@ -161,6 +161,30 @@ lazy_static! {
             (TokenType::VAR, "VAR"),
             (TokenType::WHILE, "WHILE"),
             (TokenType::EOF, "EOF"),
+        ])
+    };
+}
+
+lazy_static! {
+    pub static ref KEYWORDS_TO_TOKEN: HashMap<String, TokenType> = {
+        HashMap::from([
+            ("and".into(), TokenType::AND),
+            ("class".into(), TokenType::CLASS),
+            ("else".into(), TokenType::ELSE),
+            ("false".into(), TokenType::FALSE),
+            ("fn".into(), TokenType::FN),
+            ("for".into(), TokenType::FOR),
+            ("if".into(), TokenType::IF),
+            ("nil".into(), TokenType::NIL),
+            ("or".into(), TokenType::OR),
+            ("print".into(), TokenType::PRINT),
+            ("return".into(), TokenType::RETURN),
+            ("super".into(), TokenType::SUPER),
+            ("this".into(), TokenType::THIS),
+            ("true".into(), TokenType::TRUE),
+            ("var".into(), TokenType::VAR),
+            ("while".into(), TokenType::WHILE),
+            ("EOF".into(), TokenType::EOF),
         ])
     };
 }
@@ -182,6 +206,7 @@ impl TokenType {
     }
 }
 
+#[derive(PartialEq)]
 pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
@@ -191,11 +216,7 @@ pub struct Token {
 
 impl fmt::Debug for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "({:<4}{:?})",
-            self.lexeme, self.token_type
-        )
+        write!(f, "({:<4}{:?})", self.lexeme, self.token_type)
     }
 }
 

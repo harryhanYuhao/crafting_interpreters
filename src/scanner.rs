@@ -1,32 +1,7 @@
-use crate::token::{Token, TokenType};
-use std::collections::HashMap;
+use crate::token::{self, Token, TokenType};
 use std::error::Error;
 use std::sync::Arc;
 use std::sync::Mutex;
-
-lazy_static! {
-    static ref KEYWORDS: HashMap<String, TokenType> = {
-        let mut m = HashMap::new();
-        m.insert("and".into(), TokenType::AND);
-        m.insert("class".into(), TokenType::CLASS);
-        m.insert("else".into(), TokenType::ELSE);
-        m.insert("false".into(), TokenType::FALSE);
-        m.insert("fun".into(), TokenType::FUN);
-        m.insert("for".into(), TokenType::FOR);
-        m.insert("if".into(), TokenType::IF);
-        m.insert("nil".into(), TokenType::NIL);
-        m.insert("or".into(), TokenType::OR);
-        m.insert("print".into(), TokenType::PRINT);
-        m.insert("return".into(), TokenType::RETURN);
-        m.insert("super".into(), TokenType::SUPER);
-        m.insert("this".into(), TokenType::THIS);
-        m.insert("ture".into(), TokenType::TRUE);
-        m.insert("var".into(), TokenType::VAR);
-        m.insert("while".into(), TokenType::WHILE);
-        m.insert("EOF".into(), TokenType::EOF);
-        m
-    };
-}
 
 pub fn scan_tokens(source: &str, line: &mut u32) -> Result<Vec<Arc<Mutex<Token>>>, Box<dyn Error>> {
     let mut token_vec: Vec<Arc<Mutex<Token>>> = Vec::new();
@@ -206,15 +181,14 @@ fn scan_iteration(
             token = Token::new(TokenType::STRING, tmp, *line);
         }
         '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0' => {
-            while source_vec[poke].is_digit(10) && poke < source_vec.len() {
+            // check decimal point
+            while poke < source_vec.len() && source_vec[poke].is_digit(10) {
                 poke += 1;
             }
-            if poke < source_vec.len() {
-                if source_vec[poke] == '.' {
+            if poke < source_vec.len() && source_vec[poke] == '.' {
+                poke += 1;
+                while poke < source_vec.len() && source_vec[poke].is_digit(10) {
                     poke += 1;
-                    while source_vec[poke].is_digit(10) && poke < source_vec.len() {
-                        poke += 1;
-                    }
                 }
             }
             if source_vec[poke - 1] == '.' {
@@ -235,9 +209,13 @@ fn scan_iteration(
                 poke += 1;
             }
             let tmp = get_string(start, poke, source_vec);
-            let mut token_type: TokenType = TokenType::IDENTIFIER;
-            if let Some(token) = KEYWORDS.get(&tmp) {
+
+            // identify if it is keyword
+            let token_type: TokenType;
+            if let Some(token) = token::KEYWORDS_TO_TOKEN.get(&tmp) {
                 token_type = (*token).clone();
+            } else {
+                token_type = TokenType::IDENTIFIER;
             }
             token = Token::new(token_type, tmp, *line);
         }
@@ -278,4 +256,61 @@ fn get_string(start: usize, end: usize, char_vec: &Vec<char>) -> String {
         tmp.push(char_vec[i]);
     }
     tmp
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_scan_iteration() {
+        let mut current = 0;
+        let mut line = 1;
+        let source = "!=".chars().collect::<Vec<char>>();
+        let token = scan_iteration(&source, 0, &mut current, &mut line).unwrap();
+        assert_eq!(token.token_type, TokenType::BANG_EQUAL);
+        assert_eq!(token.lexeme, "!=");
+        assert_eq!(token.line, 1);
+    }
+
+    #[test]
+    fn test_scan_tokens() {
+        fn test_helper(source: &str, expected: Vec<Token>) {
+            let mut line = 0;
+            let tokens = scan_tokens(source, &mut line).unwrap(); assert_eq!(tokens.len(), expected.len());
+            for (i, token) in tokens.iter().enumerate() {
+                assert!(*token.lock().unwrap() == expected[i]);
+            }
+        }
+
+        let source = r#"! != "hello" 123 123.123"#;
+        let expected = vec![
+            Token::new(TokenType::BANG, "!".into(), 0),
+            Token::new(TokenType::BANG_EQUAL, "!=".into(), 0),
+            Token::new(TokenType::STRING, "hello".into(), 0),
+            Token::new(TokenType::NUMBER, "123".into(), 0),
+            Token::new(TokenType::NUMBER, "123.123".into(), 0),
+        ];
+        test_helper(source, expected);
+
+        let source = r#"1+2-3*4/5+1.22+5.22*21232.5347891"#;
+        let expected = vec![
+            Token::new(TokenType::NUMBER, "1".into(), 0),
+            Token::new(TokenType::PLUS, "+".into(), 0),
+            Token::new(TokenType::NUMBER, "2".into(), 0),
+            Token::new(TokenType::MINUS, "-".into(), 0),
+            Token::new(TokenType::NUMBER, "3".into(), 0),
+            Token::new(TokenType::STAR, "*".into(), 0),
+            Token::new(TokenType::NUMBER, "4".into(), 0),
+            Token::new(TokenType::SLASH, "/".into(), 0),
+            Token::new(TokenType::NUMBER, "5".into(), 0),
+            Token::new(TokenType::PLUS, "+".into(), 0),
+            Token::new(TokenType::NUMBER, "1.22".into(), 0),
+            Token::new(TokenType::PLUS, "+".into(), 0),
+            Token::new(TokenType::NUMBER, "5.22".into(), 0),
+            Token::new(TokenType::STAR, "*".into(), 0),
+            Token::new(TokenType::NUMBER, "21232.5347891".into(), 0),
+        ];
+        test_helper(source, expected);
+    }
 }
