@@ -17,17 +17,14 @@ pub enum TreeType {
     UNDEFINED,
 }
 
-// tree option
-pub type TreeOP = Option<Arc<Mutex<Tree>>>;
-
 #[derive(Debug)]
 pub struct Tree {
     // expr: short for expression
     // If it is not an expression, it is a statment.
     tree_type: TreeType,
-    token: Arc<Mutex<token::Token>>,
-    left: TreeOP,
-    right: TreeOP,
+    token: Arc<Mutex<Token>>,
+    left: Option<Arc<Mutex<Tree>>>,
+    right: Option<Arc<Mutex<Tree>>>,
 }
 
 impl fmt::Display for Tree {
@@ -86,6 +83,15 @@ impl fmt::Display for Tree {
 }
 
 impl Tree {
+    pub fn from_arc_mut_token(token: Arc<Mutex<Token>>) -> Self {
+        Tree {
+            tree_type: TreeType::UNDEFINED,
+            token,
+            left: None,
+            right: None,
+        }
+    }
+
     pub fn random_expr(level: usize) -> Self {
         if level == 0 {
             Tree {
@@ -128,7 +134,6 @@ impl Tree {
         // ***********************************
         // **** START OF EXECUTION
         // ***********************************
-
         let token = self.token.lock().unwrap();
         let mut res: f64 = 0.0;
         match token.token_type {
@@ -180,11 +185,37 @@ impl Tree {
     }
 }
 
-pub fn parse(tokens: &[Arc<Mutex<Token>>]) -> Result<Arc<Mutex<Tree>>, Box<dyn Error>> {
+// Convert [Arc<Mutex<Token>] into linked list for parsing
+pub struct LinkedTree {
+    pub tree: Option<Arc<Mutex<Tree>>>,
+    pub next: Option<Arc<Mutex<LinkedTree>>>,
+}
+
+impl fmt::Debug for LinkedTree {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn helper(input: &LinkedTree) -> String {
+            let rep: String;
+            if let Some(inner_tree) = &input.tree {
+                let inner_tree = inner_tree.lock().unwrap();
+                let token = inner_tree.token.lock().unwrap();
+                rep = format!("{:?}", token);
+            } else {
+                rep = "None".into();
+            }
+            let mut ret: String = format!("{:?}", rep);
+            if let Some(next) = &input.next {
+                ret.push_str(" -> ");
+                ret.push_str(&helper(&(next.lock().unwrap())));
+            }
+            ret
+        }
+
+        write!(f, "{}", helper(self))
+    }
+}
+
+pub fn parse(token_ls: &LinkedTree) -> Result<Arc<Mutex<Tree>>, Box<dyn Error>> {
     let mut left: Option<Tree> = None;
 
-    for (i, token) in tokens.iter().enumerate() {
-        let token_ref = token.lock().unwrap();
-    }
     Ok(Arc::new(Mutex::new(left.unwrap())))
 }

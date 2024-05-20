@@ -25,4 +25,14 @@ Lox is a mock language and designed to be simple and easy to implement.
 
 ## Syntax 
 
-Statements are and must be terminated by `;`. If it reaches the end of the line, without finding `;`, but a statement is not complete, the interpretor shall panic.
+Statements are and must be terminated by `;`. If it reaches the end of the line, without finding `;`, and a statement is not complete, the interpretor shall panic.
+
+## Types 
+
+Lox has the following types:
+
+- `nil` - Null value
+- `bool` - Boolean value
+- `number` - Floating point number. Lox does not have interger type.
+- `string` - String value
+- `class` - Custom class type
