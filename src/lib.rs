@@ -24,6 +24,7 @@ pub fn run_file(path: &str) -> Result<(), Box<dyn Error>> {
 
     let ls = scanner::token_vec_to_ls(&tokens);
     println!("{:?}", ls.lock().unwrap());
+    parser::parse(ls);
 
     // let tree = parser::parse(&tokens).unwrap();
     // println!("Here is the tree!: \n{}", tree.lock().unwrap());
