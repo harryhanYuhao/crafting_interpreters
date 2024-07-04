@@ -4,33 +4,6 @@ use std::error::Error;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-pub fn token_vec_to_ls(in_vec: &[Arc<Mutex<Token>>]) -> Arc<Mutex<parser::LinkedTree>> {
-    let ret = Arc::new(Mutex::new(parser::LinkedTree {
-        tree: None,
-        next: None,
-    }));
-    let mut ptr = Arc::clone(&ret);
-
-    for (i, token) in in_vec.iter().enumerate() {
-        if i == 0 {
-            ptr.lock().unwrap().tree = Some(Arc::new(Mutex::new(
-                parser::Tree::from_arc_mut_token(Arc::clone(token)),
-            )));
-            continue;
-        }
-
-        let next = parser::LinkedTree {
-            tree: Some(Arc::new(Mutex::new(parser::Tree::from_arc_mut_token(
-                Arc::clone(token),
-            )))),
-            next: None,
-        };
-        let next_ptr = Arc::new(Mutex::new(next));
-        ptr.lock().unwrap().next = Some(Arc::clone(&next_ptr));
-        ptr = Arc::clone(&next_ptr);
-    }
-    ret
-}
 
 pub fn scan_tokens(source: &str, line: &mut u32) -> Result<Vec<Arc<Mutex<Token>>>, Box<dyn Error>> {
     let mut token_vec: Vec<Arc<Mutex<Token>>> = Vec::new();

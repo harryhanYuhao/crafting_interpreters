@@ -25,7 +25,7 @@ Lox is a mock language and designed to be simple and easy to implement.
 
 ## Syntax 
 
-Statements are and must be terminated by `;`. If it reaches the end of the line, without finding `;`, and a statement is not complete, the interpretor shall panic.
+Each line is a statement. End of statement does not need to have ``;``. 
 
 ## Types 
 
@@ -36,3 +36,14 @@ Lox has the following types:
 - `number` - Floating point number. Lox does not have interger type.
 - `string` - String value
 - `class` - Custom class type
+
+## Variable declaration
+
+Variables shall be declared using `var` keyword like this:
+
+```
+var a = 10 
+var message = "Aha"
+```
+
+Types are automatically inferred. 

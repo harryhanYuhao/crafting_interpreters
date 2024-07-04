@@ -5,12 +5,13 @@ pub mod parser;
 pub mod scanner;
 pub mod token;
 
+mod tree;
+
 use std::error::Error;
 use std::fs::File;
 use std::io::{self, prelude::*, stdout, BufReader, Write};
 
 pub fn run_file(path: &str) -> Result<(), Box<dyn Error>> {
-    // rust feature: file automatically closed once out of scope
     let f = File::open(path)?;
     let mut f = BufReader::new(f);
     let mut line = 1;
@@ -21,10 +22,6 @@ pub fn run_file(path: &str) -> Result<(), Box<dyn Error>> {
     for i in tokens.iter() {
         println!("{:?}", i.lock().unwrap());
     }
-
-    let ls = scanner::token_vec_to_ls(&tokens);
-    println!("{:?}", ls.lock().unwrap());
-    parser::parse(ls);
 
     // let tree = parser::parse(&tokens).unwrap();
     // println!("Here is the tree!: \n{}", tree.lock().unwrap());

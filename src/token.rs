@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 // Grammar of the token: see docs/grammar.md
-#[allow(dead_code, unused_variables, non_camel_case_types)]
+#[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TokenType {
     // Single-character tokens.
@@ -54,6 +54,8 @@ pub enum TokenType {
     WHILE,
     EOF,
 }
+
+// TODO: REMOVE THESE HASHMAPS
 
 lazy_static! {
     static ref NUMBERRED_TB: HashMap<usize, TokenType> = {
@@ -210,7 +212,6 @@ impl TokenType {
 pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
-    // literal: String,
     pub line: u32,
 }
 
