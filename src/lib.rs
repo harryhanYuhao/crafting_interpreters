@@ -5,7 +5,8 @@ pub mod parser;
 pub mod scanner;
 pub mod token;
 
-mod tree;
+#[allow(non_snake_case)]
+mod AST_Node;
 
 use std::error::Error;
 use std::fs::File;
