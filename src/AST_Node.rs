@@ -2,9 +2,10 @@
 use crate::token;
 use rand::Rng;
 use std::error::Error;
-use std::fmt::{self};
+use std::fmt;
 use std::sync::{Arc, Mutex};
 use token::{Token, TokenType};
+use std::convert::From;
 
 /// This is the grand asbtract syntax tree
 #[derive(Debug)]
@@ -137,6 +138,15 @@ impl fmt::Display for AST_Node {
     }
 }
 
+impl From<Arc<Mutex<Token>>> for AST_Node {
+    fn from(s: Arc<Mutex<Token>>) -> AST_Node {
+        AST_Node {
+            token: s,
+            children: Vec::new(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -149,5 +159,10 @@ mod test {
             let res = AST_Node::random_expr(i);
             assert_eq!(res.get_level(), i);
         }
+    }
+
+    #[test]
+    fn AST_display(){
+        println!("{}", AST_Node::random_expr(5));
     }
 }

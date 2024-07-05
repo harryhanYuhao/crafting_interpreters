@@ -1,5 +1,6 @@
 use rand::prelude::*;
 use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, Mutex};
 use std::fmt;
 
 // Grammar of the token: see docs/grammar.md
@@ -245,3 +246,5 @@ impl Token {
         false
     }
 }
+
+pub type TokenArcVec = Vec<Arc<Mutex<Token>>>;

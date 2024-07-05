@@ -47,3 +47,16 @@ var message = "Aha"
 ```
 
 Types are automatically inferred. 
+
+## Order of Precedence
+
+| Symbol           | Name                      | Associtivity |
+| ---------------- | ------------------------- | ------------ |
+|`()`              | Parenthesis               | Uninary      |
+|`[]`              | Bracket                   | Uninary      |
+|`{}`              | Curly Bracket             | Uninary      |
+|`*`, `/`          |                           | Left ass     |
+|`+`, `-`          |                           | Left ass     |
+|`%`               | Remainder                 | Left ass     |
+|`==`, `!=`, `>=`, `<=` `>` `<` |              | Left Ass     |
+|`=`               | Assingment                | Left Ass     |
