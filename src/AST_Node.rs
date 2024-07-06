@@ -7,14 +7,43 @@ use std::fmt;
 use std::sync::{Arc, Mutex};
 use token::{Token, TokenType};
 
-// Potential fields are for usage during parse when the type may not be identified
+/// Potential fields are for usage during parse when the type may not be identified
+/// Copulatives are tokens including `+`, `-`, `*`, `/`
+/// which can be and must be placed between two expressions
 #[derive(Debug, Clone)]
 #[allow(non_camel_case_types)]
 pub(crate) enum AST_Type {
     Unfinished,
+    Stmt,
+    PotentialStmt,
     Expr,
     PotentialExpr,
+    Copulative,
     Unknown,
+}
+
+impl From<Arc<Mutex<Token>>> for AST_Type {
+    fn from(s: Arc<Mutex<Token>>) -> Self {
+        let res: AST_Type;
+        match token::get_token_type_from_arc(s.clone()) {
+            TokenType::NUMBER => res = AST_Type::Expr,
+            TokenType::PLUS
+            | TokenType::MINUS
+            | TokenType::STAR
+            | TokenType::SLASH
+            | TokenType::EQUAL_EQUAL
+            | TokenType::AND
+            | TokenType::OR
+            | TokenType::GREATER
+            | TokenType::LESS
+            | TokenType::LESS_EQUAL => {
+                res = AST_Type::Copulative;
+            }
+            _ => res = AST_Type::Unknown,
+        }
+        res
+
+    }
 }
 
 /// This is the grand asbtract syntax tree
@@ -29,6 +58,23 @@ pub struct AST_Node {
 impl AST_Node {
     pub(crate) fn get_AST_Type(&self) -> &AST_Type {
         &self.AST_Type
+    }
+
+    pub(crate) fn get_token(&self) -> Arc<Mutex<Token>> {
+        self.token.clone()
+    }
+
+    pub(crate) fn set_AST_Type(&mut self, new_type: AST_Type){
+        self.AST_Type = new_type;
+    }
+
+    pub(crate) fn get_token_from_arc(arc: Arc<Mutex<AST_Node>>) -> Arc<Mutex<Token>> {
+        let node = arc.lock().unwrap();
+        node.token.clone()
+    }
+
+    pub(crate) fn append_child(&mut self, node: Arc<Mutex<AST_Node>>) {
+        self.children.push(node.clone());
     }
 
     pub fn get_level(&self) -> usize {
@@ -96,7 +142,7 @@ impl AST_Node {
         }
     }
 
-    pub fn new(token: Arc<Mutex<token::Token>>) -> Self {
+    pub fn new_terminal_node(token: Arc<Mutex<token::Token>>) -> Self {
         AST_Node {
             AST_Type: AST_Type::Unknown,
             token,
@@ -104,12 +150,14 @@ impl AST_Node {
         }
     }
 
-    pub fn new_terminal_node(token: Arc<Mutex<token::Token>>) -> Self {
-        AST_Node {
-            AST_Type: AST_Type::Unknown,
-            token,
-            children: Vec::new(),
-        }
+    pub fn new_binary_tree(root: Arc<Mutex<Token>>, left: Arc<Mutex<Token>>, right: Arc<Mutex<Token>>) -> Self {
+        let mut root = AST_Node::from(root);
+        let left = AST_Node::from(left);
+        let right = AST_Node::from(right);
+        root.children.push(left.into());
+        root.children.push(right.into());
+
+        root
     }
 }
 
@@ -173,13 +221,8 @@ impl fmt::Display for AST_Node {
 /// Convert Arc<Mutex<Token>> into AST_Node with interpreted AST_Type
 impl From<Arc<Mutex<Token>>> for AST_Node {
     fn from(s: Arc<Mutex<Token>>) -> AST_Node {
-        let AST_Type: AST_Type;
-        match token::get_token_type_from_arc(s.clone()) {
-            TokenType::NUMBER => AST_Type = AST_Type::Expr,
-            _ => AST_Type = AST_Type::Unknown,
-        }
         AST_Node {
-            AST_Type,
+            AST_Type: AST_Type::from(s.clone()),
             token: s,
             children: Vec::new(),
         }

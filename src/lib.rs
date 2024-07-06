@@ -32,12 +32,13 @@ pub fn run_file(path: &str) -> Result<(), Box<dyn Error>> {
     let mut parse_tree: ParseTreeUnfinshed = ParseTreeUnfinshed::new();
 
     for (index, lines) in read_lines(path).iter().enumerate() {
-        println!("Line: {}", index + 1);
+        println!("Debugging run_file, Line: {}", index + 1);
         let tokens: TokenArcVec = scanner::scan_tokens(lines, &mut line)?;
         for i in tokens.iter() {
-            println!("{:?}", i.lock().unwrap());
+            println!("Scanned Token: {:?}", i.lock().unwrap());
         }
         let _ = parser::parse(&tokens, &mut parse_tree);
+        println!("{:?}", parse_tree);
     }
 
     Ok(())

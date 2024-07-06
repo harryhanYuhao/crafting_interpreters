@@ -1,8 +1,8 @@
 use rand::prelude::*;
 use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, Mutex};
-use std::fmt;
 use std::convert::{From, Into};
+use std::fmt;
+use std::sync::{Arc, Mutex};
 
 // Grammar of the token: see docs/grammar.md
 #[allow(non_camel_case_types)]
@@ -18,27 +18,27 @@ pub enum TokenType {
     COMMA,
     DOT,
     SEMICOLON,
-    SLASH,
-    STAR,
+    SLASH, // copulative
+    STAR,  // copulative
     //One or two character tokens.
     PLUS,
     PLUS_EQUAL,
-    MINUS,
+    MINUS, // copulative
     MINUS_EQUAL,
     BANG,
     BANG_EQUAL,
     EQUAL,
-    EQUAL_EQUAL,
-    GREATER,
-    GREATER_EQUAL,
-    LESS,
-    LESS_EQUAL,
+    EQUAL_EQUAL,   //copulative
+    GREATER,       // copulative
+    GREATER_EQUAL, // copulative
+    LESS,          // copulative
+    LESS_EQUAL,    // copulative
     // Literals.
     IDENTIFIER,
     STRING,
     NUMBER,
     // Keywords.
-    AND,
+    AND, // copulative
     CLASS,
     ELSE,
     FALSE,
@@ -46,7 +46,7 @@ pub enum TokenType {
     FOR,
     IF,
     NIL,
-    OR,
+    OR, // copulative
     PRINT,
     RETURN,
     SUPER,
