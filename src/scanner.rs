@@ -2,7 +2,6 @@ use crate::parser::{self};
 use crate::token::{self, Token, TokenType};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
-use std::fmt::Display;
 
 
 pub fn scan_tokens(source: &str, line: &mut u32) -> Result<Vec<Arc<Mutex<Token>>>, Box<dyn Error>> {

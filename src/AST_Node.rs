@@ -1,21 +1,36 @@
 //! The tree struct defined here is the abstract syntax tree
 use crate::token;
 use rand::Rng;
+use std::convert::From;
 use std::error::Error;
 use std::fmt;
 use std::sync::{Arc, Mutex};
 use token::{Token, TokenType};
-use std::convert::From;
+
+// Potential fields are for usage during parse when the type may not be identified
+#[derive(Debug, Clone)]
+#[allow(non_camel_case_types)]
+pub(crate) enum AST_Type {
+    Unfinished,
+    Expr,
+    PotentialExpr,
+    Unknown,
+}
 
 /// This is the grand asbtract syntax tree
 #[derive(Debug)]
 #[allow(non_camel_case_types)]
 pub struct AST_Node {
+    AST_Type: AST_Type,
     token: Arc<Mutex<Token>>,
     children: Vec<Arc<Mutex<AST_Node>>>,
 }
 
 impl AST_Node {
+    pub(crate) fn get_AST_Type(&self) -> &AST_Type {
+        &self.AST_Type
+    }
+
     pub fn get_level(&self) -> usize {
         let children_level = self.get_children().into_iter().map(|child| {
             let child = child.lock().unwrap();
@@ -32,24 +47,38 @@ impl AST_Node {
         self.get_num_of_children() > 0
     }
 
-    pub fn get_num_of_children(&self) -> usize {
+    fn get_num_of_children(&self) -> usize {
         self.children.len()
+    }
+
+    pub fn get_num_of_children_recurse(&self) -> usize {
+        fn aux_fun(node: &AST_Node) -> usize {
+            if !node.has_children() {
+                return 1;
+            }
+            let mut res: usize = 0;
+            for i in node.children.iter() {
+                let child = i.lock().unwrap();
+                res += aux_fun(&child);
+            }
+            res
+        }
+
+        if !self.has_children() {
+            return 0;
+        }
+
+        return aux_fun(self);
     }
 
     pub fn get_children(&self) -> &[Arc<Mutex<AST_Node>>] {
         &self.children
     }
 
-    pub fn from_arc_mut_token(token: Arc<Mutex<Token>>) -> Self {
-        AST_Node {
-            token,
-            children: Vec::new(),
-        }
-    }
-
     pub fn random_expr(level: usize) -> Self {
         if level == 0 {
             AST_Node {
+                AST_Type: AST_Type::Unknown,
                 token: Arc::new(Mutex::new(Token::random())),
                 children: Vec::new(),
             }
@@ -60,6 +89,7 @@ impl AST_Node {
                 .collect();
 
             AST_Node {
+                AST_Type: AST_Type::Unknown,
                 token: Arc::new(Mutex::new(Token::random())),
                 children,
             }
@@ -68,6 +98,7 @@ impl AST_Node {
 
     pub fn new(token: Arc<Mutex<token::Token>>) -> Self {
         AST_Node {
+            AST_Type: AST_Type::Unknown,
             token,
             children: Vec::new(),
         }
@@ -75,6 +106,7 @@ impl AST_Node {
 
     pub fn new_terminal_node(token: Arc<Mutex<token::Token>>) -> Self {
         AST_Node {
+            AST_Type: AST_Type::Unknown,
             token,
             children: Vec::new(),
         }
@@ -138,13 +170,31 @@ impl fmt::Display for AST_Node {
     }
 }
 
+/// Convert Arc<Mutex<Token>> into AST_Node with interpreted AST_Type
 impl From<Arc<Mutex<Token>>> for AST_Node {
     fn from(s: Arc<Mutex<Token>>) -> AST_Node {
+        let AST_Type: AST_Type;
+        match token::get_token_type_from_arc(s.clone()) {
+            TokenType::NUMBER => AST_Type = AST_Type::Expr,
+            _ => AST_Type = AST_Type::Unknown,
+        }
         AST_Node {
+            AST_Type,
             token: s,
             children: Vec::new(),
         }
     }
+}
+
+impl Into<Arc<Mutex<AST_Node>>> for AST_Node {
+    fn into(self) -> Arc<Mutex<AST_Node>> {
+        Arc::new(Mutex::new(self))
+    }
+}
+
+pub fn get_AST_Type_from_arc(input: Arc<Mutex<AST_Node>>) -> AST_Type {
+    let node = input.lock().unwrap();
+    node.AST_Type.clone()
 }
 
 #[cfg(test)]
@@ -162,7 +212,15 @@ mod test {
     }
 
     #[test]
-    fn AST_display(){
+    fn AST_display() {
         println!("{}", AST_Node::random_expr(5));
+    }
+
+    #[test]
+    fn num_terminal_nodes() {
+        // for now has to be checked manually
+        let node = AST_Node::random_expr(3);
+        println!("{}", node);
+        println!("{}", node.get_num_of_children_recurse())
     }
 }

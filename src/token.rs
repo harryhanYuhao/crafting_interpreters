@@ -2,6 +2,7 @@ use rand::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::fmt;
+use std::convert::{From, Into};
 
 // Grammar of the token: see docs/grammar.md
 #[allow(non_camel_case_types)]
@@ -247,4 +248,15 @@ impl Token {
     }
 }
 
+impl Into<Arc<Mutex<Token>>> for Token {
+    fn into(self) -> Arc<Mutex<Token>> {
+        Arc::new(Mutex::new(self))
+    }
+}
+
 pub type TokenArcVec = Vec<Arc<Mutex<Token>>>;
+
+pub fn get_token_type_from_arc(input: Arc<Mutex<Token>>) -> TokenType {
+    let token = input.lock().unwrap();
+    token.token_type
+}
