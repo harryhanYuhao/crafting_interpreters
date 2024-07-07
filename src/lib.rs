@@ -15,6 +15,7 @@ use std::sync::{Arc, Mutex};
 
 use parser::ParseTreeUnfinshed;
 
+use crate::parser::ParseState;
 use crate::token::TokenArcVec;
 
 fn read_lines(filename: &str) -> Vec<String> {
@@ -37,7 +38,13 @@ pub fn run_file(path: &str) -> Result<(), Box<dyn Error>> {
         for i in tokens.iter() {
             println!("Scanned Token: {:?}", i.lock().unwrap());
         }
-        let _ = parser::parse(&tokens, &mut parse_tree);
+        let res = parser::parse(&tokens, &mut parse_tree);
+        match res {
+            ParseState::Err(e) => {
+                println!("{:?}", e);
+            }
+            _ => {}
+        }
         println!("{:?}", parse_tree);
     }
 

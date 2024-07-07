@@ -1,11 +1,10 @@
 //! The tree struct defined here is the abstract syntax tree
-use crate::token;
+use crate::token::{self, Token, TokenType};
 use rand::Rng;
 use std::convert::From;
 use std::error::Error;
 use std::fmt;
 use std::sync::{Arc, Mutex};
-use token::{Token, TokenType};
 
 /// Potential fields are for usage during parse when the type may not be identified
 /// Copulatives are tokens including `+`, `-`, `*`, `/`
@@ -25,7 +24,7 @@ pub(crate) enum AST_Type {
 impl From<Arc<Mutex<Token>>> for AST_Type {
     fn from(s: Arc<Mutex<Token>>) -> Self {
         let res: AST_Type;
-        match token::get_token_type_from_arc(s.clone()) {
+        match Token::get_token_type_from_arc(s.clone()) {
             TokenType::NUMBER => res = AST_Type::Expr,
             TokenType::PLUS
             | TokenType::MINUS
@@ -42,7 +41,6 @@ impl From<Arc<Mutex<Token>>> for AST_Type {
             _ => res = AST_Type::Unknown,
         }
         res
-
     }
 }
 
@@ -64,13 +62,18 @@ impl AST_Node {
         self.token.clone()
     }
 
-    pub(crate) fn set_AST_Type(&mut self, new_type: AST_Type){
+    pub(crate) fn set_AST_Type(&mut self, new_type: AST_Type) {
         self.AST_Type = new_type;
     }
 
     pub(crate) fn get_token_from_arc(arc: Arc<Mutex<AST_Node>>) -> Arc<Mutex<Token>> {
         let node = arc.lock().unwrap();
         node.token.clone()
+    }
+
+    pub(crate) fn get_token_type_from_arc(arc: Arc<Mutex<AST_Node>>) -> TokenType {
+        let token = AST_Node::get_token_from_arc(arc);
+        Token::get_token_type_from_arc(token)
     }
 
     pub(crate) fn append_child(&mut self, node: Arc<Mutex<AST_Node>>) {
@@ -150,7 +153,11 @@ impl AST_Node {
         }
     }
 
-    pub fn new_binary_tree(root: Arc<Mutex<Token>>, left: Arc<Mutex<Token>>, right: Arc<Mutex<Token>>) -> Self {
+    pub fn new_binary_tree(
+        root: Arc<Mutex<Token>>,
+        left: Arc<Mutex<Token>>,
+        right: Arc<Mutex<Token>>,
+    ) -> Self {
         let mut root = AST_Node::from(root);
         let left = AST_Node::from(left);
         let right = AST_Node::from(right);
@@ -162,57 +169,52 @@ impl AST_Node {
 }
 
 impl fmt::Display for AST_Node {
+    // recursively print a tree
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // For better manuevour, this auxillary function gets the representation of the
+        // AST_Node recursively
         fn recurse_print(input: &AST_Node) -> Vec<String> {
             let mut res: Vec<String> = vec![];
-            res.push(format!("{:?}", input.token.lock().unwrap()));
+            // the content of this node
+            res.push(format!(
+                "{:?}      AST_Type::{:?}",
+                input.token.lock().unwrap(),
+                input.AST_Type
+            ));
+
+            // append the string representation of the children
+            // content of each child are placed in separate lines
             let num_of_children = input.get_num_of_children();
             let children = input.get_children();
 
-            let bound = match num_of_children > 1 {
-                true => num_of_children - 1,
-                false => 0,
-            };
-            for i in 0..bound {
+            for i in 0..num_of_children {
                 let node = children[i].clone();
                 let node = &(node.lock().unwrap());
                 for (j, content) in recurse_print(node).iter().enumerate() {
-                    let mut padding = String::new();
+                    let padding: String;
                     if j == 0 {
-                        padding.push_str(" |-".into());
+                        padding = String::from(" |-");
+                    } else if i + 1 == num_of_children {
+                        padding = String::from("   ");
                     } else {
-                        padding.push_str(" | ".into());
+                        padding = String::from(" | ");
                     }
-                    padding.push_str(content);
-                    res.push(padding);
+                    res.push(padding + content);
                 }
             }
 
-            if num_of_children >= 1 {
-                let node = Arc::clone(&children[num_of_children - 1]);
-                let node = &(node.lock().unwrap());
-                for (i, content) in recurse_print(node).iter().enumerate() {
-                    let mut padding = String::new();
-                    if i == 0 {
-                        padding.push_str(" |-".into());
-                    } else {
-                        padding.push_str("   ".into());
-                    }
-                    padding.push_str(content);
-                    res.push(padding);
-                }
-            };
             res
         }
 
         // a vector of string. Each one represents a new line
         let ret_vec = recurse_print(self);
         let mut ret_str: String = String::new();
+        // convert the vector of strings into one string
         for i in ret_vec.iter() {
             ret_str.push_str(i);
             ret_str.push_str("\n");
         }
-        // no need to check if empty. pop return none if empty
+        // no need to check if empty. pop do nothing if empty
         ret_str.pop(); // remove the last newline
         write!(f, "{}", ret_str)
     }

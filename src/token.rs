@@ -246,6 +246,10 @@ impl Token {
         }
         false
     }
+    pub(crate) fn get_token_type_from_arc(input: Arc<Mutex<Token>>) -> TokenType {
+        let token = input.lock().unwrap();
+        token.token_type
+    }
 }
 
 impl Into<Arc<Mutex<Token>>> for Token {
@@ -255,8 +259,3 @@ impl Into<Arc<Mutex<Token>>> for Token {
 }
 
 pub type TokenArcVec = Vec<Arc<Mutex<Token>>>;
-
-pub fn get_token_type_from_arc(input: Arc<Mutex<Token>>) -> TokenType {
-    let token = input.lock().unwrap();
-    token.token_type
-}
