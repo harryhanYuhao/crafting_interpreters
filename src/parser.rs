@@ -90,6 +90,7 @@ impl IndexMut<usize> for ParseTreeUnfinshed {
     }
 }
 
+#[derive(Debug)]
 pub enum ParseState {
     Finished,
     Unfinished,
@@ -135,23 +136,38 @@ enum SubParseState {
     Err(Box<dyn Error>),
 }
 
+macro_rules! error_handle_SubParseState {
+    ($fun:expr) => {
+        match $fun {
+            SubParseState::Unfinished => return ParseState::Unfinished,
+            SubParseState::Err(err) => return ParseState::Err(err),
+            _ => {}
+        }
+    };
+}
+
 // this is the real parse. Define here for recursion
 fn real_parse(tree: &mut ParseTreeUnfinshed) -> ParseState {
     if tree.len() <= 1 {
         return ParseState::Finished;
     }
 
-    match parse_parenthesis(tree) {
-        SubParseState::Unfinished => return ParseState::Unfinished,
-        SubParseState::Err(err) => return ParseState::Err(err),
-        _ => {}
-    }
+    error_handle_SubParseState!(parse_parenthesis(tree));
+    // parse times and devide
+    error_handle_SubParseState!(parse_ternary_left_assoc(
+        tree,
+        &vec![AST_Type::Expr, AST_Type::PotentialStmt],
+        &vec![TokenType::STAR, TokenType::SLASH],
+        &vec![AST_Type::Expr, AST_Type::PotentialStmt],
+    ));
+    // parse plus minus
+    error_handle_SubParseState!(parse_ternary_left_assoc(
+        tree,
+        &vec![AST_Type::Expr, AST_Type::PotentialStmt],
+        &vec![TokenType::PLUS, TokenType::MINUS],
+        &vec![AST_Type::Expr, AST_Type::PotentialStmt],
+    ));
 
-    match parse_plus_minux(tree) {
-        SubParseState::Unfinished => return ParseState::Unfinished,
-        SubParseState::Err(err) => return ParseState::Err(err),
-        _ => {}
-    }
     if tree.len() == 1 {
         return ParseState::Finished;
     }
@@ -193,7 +209,8 @@ fn parse_parenthesis(tree: &mut ParseTreeUnfinshed) -> SubParseState {
     if start_idx.0 && !end_idx.0 {
         // in such case paren_count never reached 0
         return SubParseState::Err("More left paren than right paren!".into());
-    } else if start_idx.0 && end_idx.0 { // the work begin
+    } else if start_idx.0 && end_idx.0 {
+        // the work begin
         // recursive call;
         let mut slice = tree.slice(start_idx.1 + 1, end_idx.1);
         let sup_parse = real_parse(&mut slice);
@@ -209,7 +226,7 @@ fn parse_parenthesis(tree: &mut ParseTreeUnfinshed) -> SubParseState {
                     None => {
                         tree.remove(end_idx.1);
                         tree.remove(start_idx.1);
-                    },
+                    }
                     Some(result) => {
                         for _ in (start_idx.1 + 1)..=(end_idx.1) {
                             tree.remove(start_idx.1 + 1);
@@ -226,53 +243,51 @@ fn parse_parenthesis(tree: &mut ParseTreeUnfinshed) -> SubParseState {
     SubParseState::Finished
 }
 
-fn parse_plus_minux(tree: &mut ParseTreeUnfinshed) -> SubParseState {
+/// This function constructs the ternary left associtive operators into tree, whose grammer is
+/// similar to +, -, *, /
+fn parse_ternary_left_assoc(
+    tree: &mut ParseTreeUnfinshed,
+    left_AST_types: &[AST_Type],
+    operator_token_types: &[TokenType],
+    right_AST_types: &[AST_Type],
+) -> SubParseState {
     let mut length = tree.len();
     let mut i = 0;
 
     // ignore the last two tokens
     while i + 2 < length {
         // match the type of the first token
-        match get_AST_Type_from_arc(Arc::clone(&tree[i])) {
-            AST_Type::Expr | AST_Type::PotentialExpr => {
-                // the type of the second token
-                // match get_AST_Type_from_arc(Arc::clone(&tree[i + 1])) {
-                match Token::get_token_type_from_arc(AST_Node::get_token_from_arc(
-                    tree[i + 1].clone(),
-                )) {
-                    TokenType::PLUS | TokenType::MINUS => {
-                        // the type of the third token
-                        match get_AST_Type_from_arc(tree[i + 2].clone()) {
-                            AST_Type::Expr | AST_Type::PotentialExpr => {
-                                // Construct the tree
-                                {
-                                    let mut root = tree[i + 1].lock().unwrap();
-                                    root.set_AST_Type(AST_Type::Expr);
-                                    root.append_child(tree[i].clone());
-                                    root.append_child(tree[i + 2].clone());
-                                }
-                                // remove the first expr, note the
-                                // length of the array decreases by
-                                // one
-                                tree.remove(i);
-                                // remove the second expr
-                                tree.remove(i + 1);
-                                length -= 2;
-                                // skipping i += 1; the new node
-                                // needs to be parsed again
-                                continue;
-                            }
-                            _ => {
-                                return SubParseState::Unfinished;
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
+        // match get_AST_Type_from_arc(Arc::clone(&tree[i])) {
+        if !AST_Node::arc_belongs_to_AST_type(tree[i].clone(), left_AST_types) {
+            i += 1;
+            continue;
         }
-        i += 1;
+        // check the second token
+        if !AST_Node::arc_belongs_to_Token_type(tree[i + 1].clone(), operator_token_types) {
+            i += 1;
+            continue;
+        }
+
+        // check the third toklen
+        if !AST_Node::arc_belongs_to_AST_type(tree[i + 2].clone(), right_AST_types) {
+            return SubParseState::Unfinished;
+        }
+        // Construct the tree
+        {
+            let mut root = tree[i + 1].lock().unwrap();
+            root.set_AST_Type(AST_Type::Expr);
+            root.append_child(tree[i].clone());
+            root.append_child(tree[i + 2].clone());
+        }
+        // remove the first expr, note the
+        // length of the array decreases by
+        // one
+        tree.remove(i);
+        // remove the second expr
+        tree.remove(i + 1);
+        length -= 2;
+        // skipping i += 1; the new node
+        // needs to be parsed again
     }
     SubParseState::Finished
 }

@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 /// Potential fields are for usage during parse when the type may not be identified
 /// Copulatives are tokens including `+`, `-`, `*`, `/`
 /// which can be and must be placed between two expressions
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[allow(non_camel_case_types)]
 pub(crate) enum AST_Type {
     Unfinished,
@@ -58,6 +58,11 @@ impl AST_Node {
         &self.AST_Type
     }
 
+    pub(crate) fn get_AST_Type_from_arc(arc: Arc<Mutex<AST_Node>>) -> AST_Type {
+        let node = arc.lock().unwrap();
+        node.AST_Type.clone()
+    }
+
     pub(crate) fn get_token(&self) -> Arc<Mutex<Token>> {
         self.token.clone()
     }
@@ -74,6 +79,26 @@ impl AST_Node {
     pub(crate) fn get_token_type_from_arc(arc: Arc<Mutex<AST_Node>>) -> TokenType {
         let token = AST_Node::get_token_from_arc(arc);
         Token::get_token_type_from_arc(token)
+    }
+
+    pub(crate) fn arc_belongs_to_AST_type(arc: Arc<Mutex<AST_Node>>, types: &[AST_Type]) -> bool {
+        let node_type = AST_Node::get_AST_Type_from_arc(arc);
+        for i in types {
+            if node_type == *i {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub(crate) fn arc_belongs_to_Token_type(arc: Arc<Mutex<AST_Node>>, types: &[TokenType]) -> bool {
+        let node_type = AST_Node::get_token_type_from_arc(arc);
+        for i in types {
+            if node_type == *i {
+                return true;
+            }
+        }
+        false
     }
 
     pub(crate) fn append_child(&mut self, node: Arc<Mutex<AST_Node>>) {

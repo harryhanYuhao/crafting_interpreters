@@ -8,6 +8,8 @@ pub mod token;
 #[allow(non_snake_case)]
 mod AST_Node;
 
+mod test;
+
 use std::error::Error;
 use std::fs::read_to_string;
 use std::io::{self, prelude::*, stdout, BufReader, Write};
@@ -34,13 +36,16 @@ pub fn run_file(path: &str) -> Result<(), Box<dyn Error>> {
 
     for (index, lines) in read_lines(path).iter().enumerate() {
         println!("Debugging run_file, Line: {}", index + 1);
+        println!("{lines}");
         let tokens: TokenArcVec = scanner::scan_tokens(lines, &mut line)?;
-        for i in tokens.iter() {
-            println!("Scanned Token: {:?}", i.lock().unwrap());
-        }
+        // DEBUG: TOKEN
+        // for i in tokens.iter() {
+        //     println!("Scanned Token: {:?}", i.lock().unwrap());
+        // }
         let res = parser::parse(&tokens, &mut parse_tree);
         match res {
             ParseState::Err(e) => {
+                // TODO: PROPER ERROR HANDLING
                 println!("{:?}", e);
             }
             _ => {}
