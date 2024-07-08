@@ -1,5 +1,5 @@
 use rand::prelude::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::convert::{From, Into};
 use std::fmt;
 use std::sync::{Arc, Mutex};
@@ -20,6 +20,7 @@ pub enum TokenType {
     SEMICOLON,
     SLASH, // copulative
     STAR,  // copulative
+    PERCENT, // copulative
     //One or two character tokens.
     PLUS,
     PLUS_EQUAL,
@@ -57,117 +58,103 @@ pub enum TokenType {
     EOF,
 }
 
-// TODO: REMOVE THESE HASHMAPS
-
-lazy_static! {
-    static ref NUMBERRED_TB: HashMap<usize, TokenType> = {
-        HashMap::from([
-            (0, TokenType::LEFT_PAREN),
-            (1, TokenType::RIGHT_PAREN),
-            (2, TokenType::LEFT_BRACE),
-            (3, TokenType::RIGHT_BRACE),
-            (4, TokenType::LEFT_BRACKET),
-            (5, TokenType::RIGHT_BRACKET),
-            (6, TokenType::COMMA),
-            (7, TokenType::DOT),
-            (8, TokenType::MINUS),
-            (9, TokenType::PLUS),
-            (10, TokenType::SEMICOLON),
-            (11, TokenType::SLASH),
-            (12, TokenType::STAR),
-            (13, TokenType::BANG),
-            (14, TokenType::BANG_EQUAL),
-            (15, TokenType::EQUAL),
-            (16, TokenType::EQUAL_EQUAL),
-            (17, TokenType::GREATER),
-            (18, TokenType::GREATER_EQUAL),
-            (19, TokenType::LESS),
-            (20, TokenType::LESS_EQUAL),
-            (21, TokenType::IDENTIFIER),
-            (22, TokenType::STRING),
-            (23, TokenType::NUMBER),
-            (24, TokenType::AND),
-            (25, TokenType::CLASS),
-            (26, TokenType::ELSE),
-            (27, TokenType::FALSE),
-            (28, TokenType::FN),
-            (29, TokenType::FOR),
-            (30, TokenType::IF),
-            (31, TokenType::NIL),
-            (32, TokenType::OR),
-            (33, TokenType::PRINT),
-            (34, TokenType::RETURN),
-            (35, TokenType::SUPER),
-            (36, TokenType::THIS),
-            (37, TokenType::TRUE),
-            (38, TokenType::VAR),
-            (39, TokenType::WHILE),
-            (40, TokenType::EOF),
-        ])
-    };
+impl fmt::Debug for TokenType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            TokenType::LEFT_PAREN => write!(f, "LEFT_PAREN"),
+            TokenType::RIGHT_PAREN => write!(f, "RIGHT_PAREN"),
+            TokenType::LEFT_BRACE => write!(f, "LEFT_BRACE"),
+            TokenType::RIGHT_BRACE => write!(f, "RIGHT_BRACE"),
+            TokenType::LEFT_BRACKET => write!(f, "LEFT_BRACKET"),
+            TokenType::RIGHT_BRACKET => write!(f, "RIGHT_BRACKET"),
+            TokenType::COMMA => write!(f, "COMMA"),
+            TokenType::DOT => write!(f, "DOT"),
+            TokenType::SEMICOLON => write!(f, "SEMICOLON"),
+            TokenType::SLASH => write!(f, "SLASH"),
+            TokenType::STAR => write!(f, "STAR"),
+            TokenType::PERCENT => write!(f, "PERCENT"),
+            TokenType::PLUS => write!(f, "PLUS"),
+            TokenType::PLUS_EQUAL => write!(f, "PLUS_EQUAL"),
+            TokenType::MINUS => write!(f, "MINUS"),
+            TokenType::MINUS_EQUAL => write!(f, "MINUS_EQUAL"),
+            TokenType::BANG => write!(f, "BANG"),
+            TokenType::BANG_EQUAL => write!(f, "BANG_EQUAL"),
+            TokenType::EQUAL => write!(f, "EQUAL"),
+            TokenType::EQUAL_EQUAL => write!(f, "EQUAL_EQUAL"),
+            TokenType::GREATER => write!(f, "GREATER"),
+            TokenType::GREATER_EQUAL => write!(f, "GREATER_EQUAL"),
+            TokenType::LESS => write!(f, "LESS"),
+            TokenType::LESS_EQUAL => write!(f, "LESS_EQUAL"),
+            TokenType::IDENTIFIER => write!(f, "IDENTIFIER"),
+            TokenType::STRING => write!(f, "STRING"),
+            TokenType::NUMBER => write!(f, "NUMBER"),
+            TokenType::AND => write!(f, "AND"),
+            TokenType::CLASS => write!(f, "CLASS"),
+            TokenType::ELSE => write!(f, "ELSE"),
+            TokenType::FALSE => write!(f, "FALSE"),
+            TokenType::FN => write!(f, "FN"),
+            TokenType::FOR => write!(f, "FOR"),
+            TokenType::IF => write!(f, "IF"),
+            TokenType::NIL => write!(f, "NIL"),
+            TokenType::OR => write!(f, "OR"),
+            TokenType::PRINT => write!(f, "PRINT"),
+            TokenType::RETURN => write!(f, "RETURN"),
+            TokenType::SUPER => write!(f, "SUPER"),
+            TokenType::THIS => write!(f, "THIS"),
+            TokenType::TRUE => write!(f, "TRUE"),
+            TokenType::VAR => write!(f, "VAR"),
+            TokenType::WHILE => write!(f, "WHILE"),
+            TokenType::EOF => write!(f, "EOF"),
+        }
+    }
 }
 
-lazy_static! {
-    // if a type is in this set, it is a terminal
-    static ref TERMINAL_SET: HashSet<TokenType> = {
-        HashSet::from([
-            TokenType::NUMBER,
-            TokenType::EOF,
-            TokenType::TRUE,
-            TokenType::FALSE,
-        ])
-    };
-}
-
-lazy_static! {
-    static ref DEBUG_STRING: HashMap<TokenType, &'static str> = {
-        HashMap::from([
-            (TokenType::LEFT_PAREN, "LEFT_PAREN"),
-            (TokenType::RIGHT_PAREN, "RIGHT_PAREN"),
-            (TokenType::LEFT_BRACE, "LEFT_BRACE"),
-            (TokenType::RIGHT_BRACE, "RIGHT_BRACE"),
-            (TokenType::LEFT_BRACKET, "LEFT_BRACKET"),
-            (TokenType::RIGHT_BRACKET, "RIGHT_BRACKET"),
-            (TokenType::COMMA, "COMMA"),
-            (TokenType::DOT, "DOT"),
-            (TokenType::MINUS, "MINUS"),
-            (TokenType::MINUS_EQUAL, "MINUS_EQUAL"),
-            (TokenType::PLUS, "PLUS"),
-            (TokenType::PLUS_EQUAL, "PLUS_EQUAL"),
-            (TokenType::SEMICOLON, "SEMICOLON"),
-            (TokenType::SLASH, "SLASH"),
-            (TokenType::STAR, "STAR"),
-            (TokenType::BANG, "BANG"),
-            (TokenType::BANG_EQUAL, "BANG_EQUAL"),
-            (TokenType::EQUAL, "EQUAL"),
-            (TokenType::EQUAL_EQUAL, "EQUAL_EQUAL"),
-            (TokenType::GREATER, "GREATER"),
-            (TokenType::GREATER_EQUAL, "GREATER_EQUAL"),
-            (TokenType::LESS, "LESS"),
-            (TokenType::LESS_EQUAL, "LESS_EQUAL"),
-            (TokenType::IDENTIFIER, "IDENTIFIER"),
-            (TokenType::STRING, "STRING"),
-            (TokenType::NUMBER, "NUMBER"),
-            (TokenType::AND, "AND"),
-            (TokenType::CLASS, "CLASS"),
-            (TokenType::ELSE, "ELSE"),
-            (TokenType::FALSE, "FALSE"),
-            (TokenType::FN, "FN"),
-            (TokenType::FOR, "FOR"),
-            (TokenType::IF, "IF"),
-            (TokenType::NIL, "NIL"),
-            (TokenType::OR, "OR"),
-            (TokenType::PRINT, "PRINT"),
-            (TokenType::RETURN, "RETURN"),
-            (TokenType::SUPER, "SUPER"),
-            (TokenType::THIS, "THIS"),
-            (TokenType::TRUE, "TRUE"),
-            (TokenType::VAR, "VAR"),
-            (TokenType::WHILE, "WHILE"),
-            (TokenType::EOF, "EOF"),
-        ])
-    };
-}
+// This list only used for generating random TokenType from index
+static TOKEN_TYPE_LIST: [TokenType; 43] = [
+    TokenType::LEFT_PAREN,
+    TokenType::RIGHT_PAREN,
+    TokenType::LEFT_BRACE,
+    TokenType::RIGHT_BRACE,
+    TokenType::LEFT_BRACKET,
+    TokenType::RIGHT_BRACKET,
+    TokenType::COMMA,
+    TokenType::DOT,
+    TokenType::SEMICOLON,
+    TokenType::SLASH, // copulative
+    TokenType::STAR,  // copulative
+    TokenType::PERCENT, // copulative
+    TokenType::PLUS,
+    TokenType::PLUS_EQUAL,
+    TokenType::MINUS, // copulative
+    TokenType::MINUS_EQUAL,
+    TokenType::BANG,
+    TokenType::BANG_EQUAL,
+    TokenType::EQUAL,
+    TokenType::EQUAL_EQUAL,   //copulative
+    TokenType::GREATER,       // copulative
+    TokenType::GREATER_EQUAL, // copulative
+    TokenType::LESS,          // copulative
+    TokenType::LESS_EQUAL,    // copulative
+    TokenType::IDENTIFIER,
+    TokenType::STRING,
+    TokenType::NUMBER,
+    TokenType::CLASS,
+    TokenType::ELSE,
+    TokenType::FALSE,
+    TokenType::FN,
+    TokenType::FOR,
+    TokenType::IF,
+    TokenType::NIL,
+    TokenType::OR, // copulative
+    TokenType::PRINT,
+    TokenType::RETURN,
+    TokenType::SUPER,
+    TokenType::THIS,
+    TokenType::TRUE,
+    TokenType::VAR,
+    TokenType::WHILE,
+    TokenType::EOF,
+];
 
 lazy_static! {
     pub static ref KEYWORDS_TO_TOKEN: HashMap<String, TokenType> = {
@@ -193,20 +180,11 @@ lazy_static! {
     };
 }
 
-impl fmt::Debug for TokenType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match DEBUG_STRING.get(self) {
-            Some(s) => write!(f, "{}", s),
-            None => write!(f, "UNKNOWN_TYPE FOR DEBUG TRAIT"),
-        }
-    }
-}
-
 impl TokenType {
     fn random() -> Self {
         let mut rng = rand::thread_rng();
-        let n = rng.gen_range(0..NUMBERRED_TB.len());
-        *NUMBERRED_TB.get(&n).unwrap()
+        let n = rng.gen_range(0..TOKEN_TYPE_LIST.len());
+        TOKEN_TYPE_LIST[n].clone()
     }
 }
 
@@ -219,7 +197,7 @@ pub struct Token {
 
 impl fmt::Debug for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({:<4}{:?})", self.lexeme, self.token_type)
+        write!(f, "({:<4} {:?})", self.lexeme, self.token_type)
     }
 }
 
@@ -240,12 +218,6 @@ impl Token {
         }
     }
 
-    pub fn is_terminal(&self) -> bool {
-        if TERMINAL_SET.contains(&self.token_type) {
-            return true;
-        }
-        false
-    }
     pub(crate) fn get_token_type_from_arc(input: Arc<Mutex<Token>>) -> TokenType {
         let token = input.lock().unwrap();
         token.token_type

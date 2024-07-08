@@ -153,19 +153,36 @@ fn real_parse(tree: &mut ParseTreeUnfinshed) -> ParseState {
     }
 
     error_handle_SubParseState!(parse_parenthesis(tree));
-    // parse times and devide
+
+    // parse times, divide, and modular
     error_handle_SubParseState!(parse_ternary_left_assoc(
         tree,
-        &vec![AST_Type::Expr, AST_Type::PotentialStmt],
-        &vec![TokenType::STAR, TokenType::SLASH],
-        &vec![AST_Type::Expr, AST_Type::PotentialStmt],
+        &vec![
+            AST_Type::Expr,
+            AST_Type::PotentialStmt,
+            AST_Type::Identifier
+        ],
+        &vec![TokenType::STAR, TokenType::SLASH, TokenType::PERCENT],
+        &vec![
+            AST_Type::Expr,
+            AST_Type::PotentialStmt,
+            AST_Type::Identifier
+        ],
     ));
     // parse plus minus
     error_handle_SubParseState!(parse_ternary_left_assoc(
         tree,
-        &vec![AST_Type::Expr, AST_Type::PotentialStmt],
+        &vec![
+            AST_Type::Expr,
+            AST_Type::PotentialStmt,
+            AST_Type::Identifier
+        ],
         &vec![TokenType::PLUS, TokenType::MINUS],
-        &vec![AST_Type::Expr, AST_Type::PotentialStmt],
+        &vec![
+            AST_Type::Expr,
+            AST_Type::PotentialStmt,
+            AST_Type::Identifier
+        ],
     ));
 
     if tree.len() == 1 {

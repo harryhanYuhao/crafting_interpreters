@@ -39,9 +39,9 @@ pub fn run_file(path: &str) -> Result<(), Box<dyn Error>> {
         println!("{lines}");
         let tokens: TokenArcVec = scanner::scan_tokens(lines, &mut line)?;
         // DEBUG: TOKEN
-        // for i in tokens.iter() {
-        //     println!("Scanned Token: {:?}", i.lock().unwrap());
-        // }
+        for i in tokens.iter() {
+            println!("Scanned Token: {:?}", i.lock().unwrap());
+        }
         let res = parser::parse(&tokens, &mut parse_tree);
         match res {
             ParseState::Err(e) => {

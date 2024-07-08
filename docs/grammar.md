@@ -2,7 +2,35 @@
 
 Lox is a mock language and designed to be simple and easy to implement. 
 
-## Keywords 
+This is a comphrehensive grammar for lox. For tutorial, check [tutorial.md](tutorial.md)
+
+## Valid Tokens
+
+### Operators 
+
+| Operators        | Description        | Associativity |
+| -----------------|--------------------| --------------|
+| `+`              | Addition           | Left          |
+| `-`              | Subtraction        | Left          |
+| `*`              | Multiplication     | Left          |
+| `/`              | Division           | Left          |
+| `%`              | Modulus            | Left          |
+| `==`             | Equality           | Left          |
+| `!=`             | Inequality         | Left          |
+| `>`              | Greater than       | Left          |
+| `>=`             | Greater or equal   | Left          |
+| `<`              | Less than          | Left          |
+| `<=`             | Less or equal      | Left          |
+| `&&`             | Logical AND        | Left          |
+| `||`             | Logical OR         | Left          |
+| `!`              | Logical NOT        | Right         |
+| `=`              | Assignment         | Right         |
+|`( )`             | Parenthesis        | NA            |
+
+Left associativity means operations starts from left to the right. 
+`1 + 2 + 3` is evaluated as `(1 + 2) + 3`; however. `a = b = c` is evaluated as let `b` equal to `c`, and then let `a` equal to `b`.
+
+### Keywords
 
 | Keyword | Description |
 |---------|-------------|
@@ -21,7 +49,6 @@ Lox is a mock language and designed to be simple and easy to implement.
 | `super` | Reference to the superclass |
 | `fn`   | Function definition |
 | `var`   | Variable declaration |
-
 
 ## Syntax 
 
@@ -46,7 +73,10 @@ var a = 10
 var message = "Aha"
 ```
 
-Types are automatically inferred. 
+Types are automatically inferred during declaration.
+
+Variables must be declared before use.
+
 
 ## Order of Precedence
 
@@ -55,8 +85,7 @@ Types are automatically inferred.
 |`()`              | Parenthesis               | Uninary      |
 |`[]`              | Bracket                   | Uninary      |
 |`{}`              | Curly Bracket             | Uninary      |
-|`*`, `/`          |                           | Left ass     |
+|`*`, `/`, `%`     |                           | Left ass     |
 |`+`, `-`          |                           | Left ass     |
-|`%`               | Remainder                 | Left ass     |
 |`==`, `!=`, `>=`, `<=` `>` `<` |              | Left Ass     |
 |`=`               | Assingment                | Left Ass     |

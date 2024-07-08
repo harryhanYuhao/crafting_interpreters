@@ -18,6 +18,7 @@ pub(crate) enum AST_Type {
     Expr,
     PotentialExpr,
     Copulative,
+    Identifier,
     Unknown,
 }
 
@@ -26,7 +27,9 @@ impl From<Arc<Mutex<Token>>> for AST_Type {
         let res: AST_Type;
         match Token::get_token_type_from_arc(s.clone()) {
             TokenType::NUMBER => res = AST_Type::Expr,
+            TokenType::IDENTIFIER => res = AST_Type::Identifier,
             TokenType::PLUS
+            | TokenType::PERCENT
             | TokenType::MINUS
             | TokenType::STAR
             | TokenType::SLASH
