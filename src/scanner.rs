@@ -1,4 +1,3 @@
-use crate::parser::{self};
 use crate::token::{self, Token, TokenType};
 use std::error::Error;
 use std::sync::{Arc, Mutex};

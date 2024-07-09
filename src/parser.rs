@@ -296,15 +296,13 @@ fn parse_ternary_left_assoc(
             root.append_child(tree[i].clone());
             root.append_child(tree[i + 2].clone());
         }
-        // remove the first expr, note the
-        // length of the array decreases by
-        // one
+        // remove the first expr, 
+        // note the length of the array decreases by one
         tree.remove(i);
         // remove the second expr
         tree.remove(i + 1);
         length -= 2;
-        // skipping i += 1; the new node
-        // needs to be parsed again
+        // skipping i += 1; the new node needs to be parsed again
     }
     SubParseState::Finished
 }
