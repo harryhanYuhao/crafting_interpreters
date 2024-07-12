@@ -17,10 +17,10 @@ pub enum TokenType {
     RIGHT_BRACKET,
     COMMA,
     DOT,
-    SEMICOLON,
-    SLASH, // copulative
-    STAR,  // copulative
-    PERCENT, // copulative
+    STMT_SEP, // statement separator, ; and new line
+    SLASH,    // copulative
+    STAR,     // copulative
+    PERCENT,  // copulative
     //One or two character tokens.
     PLUS,
     PLUS_EQUAL,
@@ -69,7 +69,7 @@ impl fmt::Debug for TokenType {
             TokenType::RIGHT_BRACKET => write!(f, "RIGHT_BRACKET"),
             TokenType::COMMA => write!(f, "COMMA"),
             TokenType::DOT => write!(f, "DOT"),
-            TokenType::SEMICOLON => write!(f, "SEMICOLON"),
+            TokenType::STMT_SEP => write!(f, "STMT_SEP"),
             TokenType::SLASH => write!(f, "SLASH"),
             TokenType::STAR => write!(f, "STAR"),
             TokenType::PERCENT => write!(f, "PERCENT"),
@@ -119,9 +119,9 @@ static TOKEN_TYPE_LIST: [TokenType; 43] = [
     TokenType::RIGHT_BRACKET,
     TokenType::COMMA,
     TokenType::DOT,
-    TokenType::SEMICOLON,
-    TokenType::SLASH, // copulative
-    TokenType::STAR,  // copulative
+    TokenType::STMT_SEP,
+    TokenType::SLASH,   // copulative
+    TokenType::STAR,    // copulative
     TokenType::PERCENT, // copulative
     TokenType::PLUS,
     TokenType::PLUS_EQUAL,
@@ -192,21 +192,27 @@ impl TokenType {
 pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
-    pub line: u32,
+    pub line: usize, // starts from 1, the line number of the token
+    pub column: usize, // starts from 1, the column number of the token
 }
 
 impl fmt::Debug for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({:<4} {:?})", self.lexeme, self.token_type)
+        write!(
+            f,
+            "({:<4} {:?} {}:{})",
+            self.lexeme, self.token_type, self.line, self.column
+        )
     }
 }
 
 impl Token {
-    pub fn new(token_type: TokenType, lexeme: String, line: u32) -> Token {
+    pub fn new(token_type: TokenType, lexeme: String, line: usize, column: usize) -> Token {
         Token {
             token_type,
             lexeme,
             line,
+            column,
         }
     }
 
@@ -215,6 +221,7 @@ impl Token {
             token_type: TokenType::random(),
             lexeme: String::from("DUMMY"),
             line: 0,
+            column: 0,
         }
     }
 

@@ -2,11 +2,14 @@ use crate::token::{self, Token, TokenType};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 
-
-pub fn scan_tokens(source: &str, line: &mut u32) -> Result<Vec<Arc<Mutex<Token>>>, Box<dyn Error>> {
+pub fn scan_tokens(
+    source: &str,
+    line: &mut usize,
+) -> Result<Vec<Arc<Mutex<Token>>>, Box<dyn Error>> {
     let mut token_vec: Vec<Arc<Mutex<Token>>> = Vec::new();
     let mut start: usize;
     let mut current: usize = 0;
+    let mut column = 1;
     let source_vec = source.chars().collect::<Vec<char>>();
     let num_of_chars = source_vec.len();
 
@@ -16,7 +19,7 @@ pub fn scan_tokens(source: &str, line: &mut u32) -> Result<Vec<Arc<Mutex<Token>>
         // scan iteration scans the text and return the next token wrapped in some.
         // If the next character does not constitute a token, it returns none
         // It increase the current counter per length of the character corresponds to the token
-        if let Some(token) = scan_iteration(&source_vec, start, &mut current, line) {
+        if let Some(token) = scan_iteration(&source_vec, start, &mut current, line, &mut column) {
             token_vec.push(Arc::new(Mutex::new(token)));
         }
     }
@@ -39,7 +42,8 @@ pub(crate) fn scan_iteration(
     // character
     current: &mut usize, // the current counter, shall be incremented per the length of the
     // char scanned
-    line: &mut u32, // line number
+    line: &mut usize, // line number
+    column: &mut usize,
 ) -> Option<Token> {
     // This function is to handle situations like this:
     // We have one character token, =, and two character token, ==
@@ -52,64 +56,129 @@ pub(crate) fn scan_iteration(
         second_char: char,
         single_type: TokenType,
         combined_type: TokenType,
-        line: u32,
+        line: usize,
+        column: usize,
         source_vec: &[char],
-    ) -> Token {
+    ) -> Option<Token> {
         let token: Token;
         if source_vec.len() <= 1 {
-            token = Token::new(single_type, String::from(source_vec[*poke - 1]), line);
+            token = Token::new(
+                single_type,
+                String::from(source_vec[*poke - 1]),
+                line,
+                column,
+            );
         } else if source_vec[*poke] != second_char {
-            token = Token::new(single_type, String::from(source_vec[*poke - 1]), line);
+            token = Token::new(
+                single_type,
+                String::from(source_vec[*poke - 1]),
+                line,
+                column,
+            );
         } else {
             *poke += 1;
             token = Token::new(
                 combined_type,
                 source_vec[*poke - 2..=*poke - 1].iter().collect(),
                 line,
+                column,
             );
         }
-        token
+        Some(token)
     }
 
     // START OF EXECUTION
     let mut poke = start + 1;
-    let token: Token;
+    let token: Option<Token>;
     match source_vec[start] {
-        '(' => token = Token::new(TokenType::LEFT_PAREN, String::from('('), *line),
-        ')' => token = Token::new(TokenType::RIGHT_PAREN, String::from(')'), *line),
+        '(' => {
+            token = Some(Token::new(
+                TokenType::LEFT_PAREN,
+                String::from('('),
+                *line,
+                *column,
+            ))
+        }
+        ')' => {
+            token = Some(Token::new(
+                TokenType::RIGHT_PAREN,
+                String::from(')'),
+                *line,
+                *column,
+            ))
+        }
         '[' => {
-            token = Token::new(
+            token = Some(Token::new(
                 TokenType::LEFT_BRACKET,
                 String::from(source_vec[start]),
                 *line,
-            )
+                *column,
+            ))
         }
         ']' => {
-            token = Token::new(
+            token = Some(Token::new(
                 TokenType::RIGHT_BRACKET,
                 String::from(source_vec[start]),
                 *line,
-            )
+                *column,
+            ))
         }
         '}' => {
-            token = Token::new(
+            token = Some(Token::new(
                 TokenType::LEFT_BRACE,
                 String::from(source_vec[start]),
                 *line,
-            )
+                *column,
+            ))
         }
         '{' => {
-            token = Token::new(
+            token = Some(Token::new(
                 TokenType::RIGHT_BRACE,
                 String::from(source_vec[start]),
                 *line,
-            )
+                *column,
+            ))
         }
-        ',' => token = Token::new(TokenType::COMMA, String::from(source_vec[start]), *line),
-        '.' => token = Token::new(TokenType::DOT, String::from(source_vec[start]), *line),
-        ';' => token = Token::new(TokenType::SEMICOLON, String::from(source_vec[start]), *line),
-        '*' => token = Token::new(TokenType::STAR, String::from(source_vec[start]), *line),
-        '%' => token = Token::new(TokenType::PERCENT, String::from(source_vec[start]), *line),
+        ',' => {
+            token = Some(Token::new(
+                TokenType::COMMA,
+                String::from(source_vec[start]),
+                *line,
+                *column,
+            ))
+        }
+        '.' => {
+            token = Some(Token::new(
+                TokenType::DOT,
+                String::from(source_vec[start]),
+                *line,
+                *column,
+            ))
+        }
+        ';' => {
+            token = Some(Token::new(
+                TokenType::STMT_SEP,
+                String::from(source_vec[start]),
+                *line,
+                *column,
+            ))
+        }
+        '*' => {
+            token = Some(Token::new(
+                TokenType::STAR,
+                String::from(source_vec[start]),
+                *line,
+                *column,
+            ))
+        }
+        '%' => {
+            token = Some(Token::new(
+                TokenType::PERCENT,
+                String::from(source_vec[start]),
+                *line,
+                *column,
+            ))
+        }
         '-' => {
             token = two_character_check(
                 &mut poke,
@@ -117,9 +186,10 @@ pub(crate) fn scan_iteration(
                 TokenType::MINUS,
                 TokenType::MINUS_EQUAL,
                 *line,
+                *column,
                 &source_vec,
             );
-        } 
+        }
         '+' => {
             token = two_character_check(
                 &mut poke,
@@ -127,6 +197,7 @@ pub(crate) fn scan_iteration(
                 TokenType::PLUS,
                 TokenType::PLUS_EQUAL,
                 *line,
+                *column,
                 &source_vec,
             );
         }
@@ -137,6 +208,7 @@ pub(crate) fn scan_iteration(
                 TokenType::BANG,
                 TokenType::BANG_EQUAL,
                 *line,
+                *column,
                 &source_vec,
             )
         }
@@ -147,6 +219,7 @@ pub(crate) fn scan_iteration(
                 TokenType::EQUAL,
                 TokenType::EQUAL_EQUAL,
                 *line,
+                *column,
                 &source_vec,
             );
         }
@@ -157,6 +230,7 @@ pub(crate) fn scan_iteration(
                 TokenType::GREATER,
                 TokenType::GREATER_EQUAL,
                 *line,
+                *column,
                 &source_vec,
             )
         }
@@ -167,6 +241,7 @@ pub(crate) fn scan_iteration(
                 TokenType::LESS,
                 TokenType::LESS_EQUAL,
                 *line,
+                *column,
                 &source_vec,
             )
         }
@@ -179,7 +254,7 @@ pub(crate) fn scan_iteration(
             }
             poke += 1;
             let tmp = get_string(start + 1, poke - 1, source_vec);
-            token = Token::new(TokenType::STRING, tmp, *line);
+            token = Some(Token::new(TokenType::STRING, tmp, *line, *column));
         }
         '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0' => {
             // check decimal point
@@ -194,10 +269,10 @@ pub(crate) fn scan_iteration(
             }
             if source_vec[poke - 1] == '.' {
                 let tmp = get_string(start, poke - 1, source_vec);
-                token = Token::new(TokenType::NUMBER, tmp, *line);
+                token = Some(Token::new(TokenType::NUMBER, tmp, *line, *column));
             } else {
                 let tmp = get_string(start, poke, source_vec);
-                token = Token::new(TokenType::NUMBER, tmp, *line);
+                token = Some(Token::new(TokenType::NUMBER, tmp, *line, *column));
             }
         }
         'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o'
@@ -218,18 +293,24 @@ pub(crate) fn scan_iteration(
             } else {
                 token_type = TokenType::IDENTIFIER;
             }
-            token = Token::new(token_type, tmp, *line);
+            token = Some(Token::new(token_type, tmp, *line, *column));
         }
 
         // ignore
         ' ' => {
             *current = poke;
-            return None;
+            token = None;
         }
         '\n' => {
             *current = poke;
             *line += 1;
-            return None;
+            *column = 0;
+            token = Some(Token::new(
+                TokenType::STMT_SEP,
+                String::from(source_vec[start]),
+                *line,
+                *column,
+            ))
         }
         '/' => {
             if source_vec[poke] == '/' {
@@ -237,9 +318,13 @@ pub(crate) fn scan_iteration(
                     poke += 1;
                 }
                 *current = poke;
-                return None;
             }
-            token = Token::new(TokenType::SLASH, String::from(source_vec[start]), *line)
+            token = Some(Token::new(
+                TokenType::SLASH,
+                String::from(source_vec[start]),
+                *line,
+                *column,
+            ))
         }
         //TODO: ERROR HANDLING
         _ => panic!(
@@ -249,7 +334,9 @@ pub(crate) fn scan_iteration(
     }
 
     *current = poke;
-    Some(token)
+    *column = *column + poke - start;
+
+    token
 }
 
 fn get_string(start: usize, end: usize, char_vec: &Vec<char>) -> String {

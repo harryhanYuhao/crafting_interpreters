@@ -61,7 +61,7 @@ pub fn run_prompt() -> Result<(), Box<dyn Error>> {
     let msg = r#"Welcome to Lox programming language"#;
     println!("{}", msg);
     let mut buffer = String::new();
-    let mut line: u32 = 1;
+    let mut line = 1;
     loop {
         print!("{line} >>> ");
         stdout().flush()?;
