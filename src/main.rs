@@ -9,7 +9,12 @@ fn main() {
             run_prompt().unwrap();
         }
         2 => {
-            run_file(&args[1]).unwrap();
+            match run_file(&args[1]) {
+                Err(e)=> {
+                    e.panic();
+                },
+                _ => {}
+            }
         }
         _ => {
             help();

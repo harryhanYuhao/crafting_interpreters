@@ -1,11 +1,9 @@
+use crate::err_lox::*;
 use crate::token::{self, Token, TokenType};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 
-pub fn scan_tokens(
-    source: &str,
-    line: &mut usize,
-) -> Result<Vec<Arc<Mutex<Token>>>, Box<dyn Error>> {
+pub fn scan_tokens(source: &str, line: &mut usize) -> Result<Vec<Arc<Mutex<Token>>>, ErrorLox> {
     let mut token_vec: Vec<Arc<Mutex<Token>>> = Vec::new();
     let mut start: usize;
     let mut current: usize = 0;
@@ -19,8 +17,9 @@ pub fn scan_tokens(
         // scan iteration scans the text and return the next token wrapped in some.
         // If the next character does not constitute a token, it returns none
         // It increase the current counter per length of the character corresponds to the token
-        if let Some(token) = scan_iteration(&source_vec, start, &mut current, line, &mut column) {
-            token_vec.push(Arc::new(Mutex::new(token)));
+        match scan_iteration(&source_vec, start, &mut current, line, &mut column)? {
+            Some(token) => token_vec.push(Arc::new(Mutex::new(token))),
+            None => {}
         }
     }
     Ok(token_vec)
@@ -44,7 +43,7 @@ pub(crate) fn scan_iteration(
     // char scanned
     line: &mut usize, // line number
     column: &mut usize,
-) -> Option<Token> {
+) -> Result<Option<Token>, ErrorLox> {
     // This function is to handle situations like this:
     // We have one character token, =, and two character token, ==
     // < and <=, > and >=, ! and !=, + and +=, - and -= The first character by iteself is a
@@ -327,16 +326,20 @@ pub(crate) fn scan_iteration(
             ))
         }
         //TODO: ERROR HANDLING
-        _ => panic!(
-            "{} is an invalid Token at line {}",
-            source_vec[start], *line
-        ),
+        _ => {
+            return Err(ErrorLox::from_filename(
+                &format!("'{}' is an invalid token", source_vec[start]),
+                *line,
+                *column,
+                "test.lox",
+            ))
+        }
     }
 
     *current = poke;
     *column = *column + poke - start;
 
-    token
+    Ok(token)
 }
 
 fn get_string(start: usize, end: usize, char_vec: &Vec<char>) -> String {

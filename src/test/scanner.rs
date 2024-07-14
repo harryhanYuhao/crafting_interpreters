@@ -9,9 +9,9 @@ fn test_scan_iteration() {
     let mut column = 1;
     let source = "!=".chars().collect::<Vec<char>>();
     let token = scan_iteration(&source, 0, &mut current, &mut line, &mut column).unwrap();
-    assert_eq!(token.token_type, TokenType::BANG_EQUAL);
-    assert_eq!(token.lexeme, "!=");
-    assert_eq!(token.line, 1);
+    assert_eq!(token.as_ref().unwrap().token_type, TokenType::BANG_EQUAL);
+    assert_eq!(token.as_ref().unwrap().lexeme, "!=");
+    assert_eq!(token.as_ref().unwrap().line, 1);
 }
 
 #[test]

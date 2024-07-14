@@ -20,6 +20,7 @@ use parser::ParseTreeUnfinshed;
 
 use crate::parser::ParseState;
 use crate::token::TokenArcVec;
+use crate::err_lox::ErrorLox;
 
 fn read_lines(filename: &str) -> Vec<String> {
     read_to_string(filename)
@@ -30,7 +31,7 @@ fn read_lines(filename: &str) -> Vec<String> {
 }
 
 /// run file process and execute the file line by line, as in run_prompt
-pub fn run_file(path: &str) -> Result<(), Box<dyn Error>> {
+pub fn run_file(path: &str) -> Result<(), ErrorLox> {
     let mut line = 1;
 
     let mut parse_tree: ParseTreeUnfinshed = ParseTreeUnfinshed::new();

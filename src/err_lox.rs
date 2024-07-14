@@ -1,61 +1,70 @@
 use std::fmt;
-// use std::error::Error;
+use std::error::Error;
 
 use colored::*;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::process::exit;
 
+#[derive(Debug)]
 pub enum ErrorType {
     ParseErr,
     ScanErr,
     UnKnown,
 }
 
-pub enum Source<'a> {
-    FileName(&'a str),
+#[derive(Debug)]
+pub enum Source {
+    FileName(String),
     Stdin,
 }
 
-impl<'a> Source<'a> {
-    pub fn from_filename(filename: &'a str) -> Self {
-        Source::FileName(filename)
+impl Source {
+    pub fn from_filename(filename: &str) -> Self {
+        Source::FileName(filename.to_string())
     }
 }
 
-pub struct ErrorLox<'a> {
-    description: &'a str,
+#[derive(Debug)]
+pub struct ErrorLox {
+    description: String,
     error_type: ErrorType,
     row: usize,
     column: usize,
-    source: Source<'a>,
+    source: Source,
 }
 
-impl<'a> ErrorLox<'a> {
+impl ErrorLox {
     pub fn from_filename(
-        description: &'a str,
+        description: &str,
         row: usize,
         column: usize,
-        filename: &'a str,
+        filename: &str,
     ) -> Self {
         let source = Source::from_filename(filename);
         ErrorLox {
-            description,
+            description: description.to_string(),
             error_type: ErrorType::UnKnown,
             row,
             column,
             source,
         }
     }
+
+    pub fn panic(&self){
+        println!("{}", self);
+        exit(1);
+    }
 }
 
-impl<'a> fmt::Debug for ErrorLox<'a> {
+impl fmt::Display for ErrorLox {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let source_name: String = match self.source {
+        let source_name: String = match &self.source {
             Source::FileName(name) => format!("{}", name.underline()),
             Source::Stdin => "stdin".underline().to_string(),
         };
 
-        let detailed_desr: String = match self.source {
+        let detailed_desr: String = match &self.source {
             Source::FileName(name) => {
                 let reader = BufReader::new(File::open(name).expect("Cannot open file"));
                 let mut content_at_nth = reader
@@ -94,14 +103,14 @@ impl<'a> fmt::Debug for ErrorLox<'a> {
         )
     }
 }
-// impl <'a> Error for ErrorLox<'a>;
+impl Error for ErrorLox {}
 
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
-    fn debug() {
-        println!("{:?}", ErrorLox::from_filename("aha", 1, 10, "test.lox"))
+    fn display() {
+        println!("{}", ErrorLox::from_filename("aha", 1, 10, "test.lox"))
     }
 }
