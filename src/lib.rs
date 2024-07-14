@@ -7,6 +7,7 @@ pub mod token;
 
 #[allow(non_snake_case)]
 mod AST_Node;
+pub mod err_lox;
 
 mod test;
 

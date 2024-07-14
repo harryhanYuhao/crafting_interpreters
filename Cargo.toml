@@ -3,9 +3,8 @@ name = "lox-rust"
 version = "0.1.0"
 edition = "2021"
 
-[dev-dependencies]
-colored = "2.1.0"
 
 [dependencies]
 lazy_static = "1.4.0"
 rand = "0.8.5"
+colored = "2.1.0"
