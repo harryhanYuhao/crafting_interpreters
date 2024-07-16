@@ -22,6 +22,7 @@ use crate::parser::ParseState;
 use crate::token::TokenArcVec;
 use crate::err_lox::ErrorLox;
 
+// TODO: remove collect and return iterator
 fn read_lines(filename: &str) -> Vec<String> {
     read_to_string(filename)
         .expect(&format!("Failed to read{filename}"))
@@ -47,7 +48,6 @@ pub fn run_file(path: &str) -> Result<(), ErrorLox> {
         let res = parser::parse(&tokens, &mut parse_tree);
         match res {
             ParseState::Err(e) => {
-                // TODO: PROPER ERROR HANDLING
                 println!("{:?}", e);
             }
             _ => {}

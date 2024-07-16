@@ -53,7 +53,6 @@ impl ErrorLox {
 
     pub fn panic(&self){
         println!("{}", self);
-        exit(1);
     }
 }
 

@@ -89,3 +89,28 @@ Variables must be declared before use.
 |`+`, `-`          |                           | Left ass     |
 |`==`, `!=`, `>=`, `<=` `>` `<` |              | Left Ass     |
 |`=`               | Assingment                | Left Ass     |
+
+## Parsing Grammar
+
+There are two parsing objects in our design: statement (stmt) and expression (expr).
+
+Expression is something that can be evaluated into a value that can be assigned to an identifier. 
+
+Statement must be executed and return an expression. Significantly, if some tokens are  arranged as a statement tree, this particular tree is complete and shall  no longer be modified, although the tree itself can be attached to other trees.
+
+This list also shows the order or precedence
+
+- (expr) -> expr 
+- expr, expr -> expr
+- *, %, / 
+    - expr | identifier * expr  | identifier -> expr 
+    - same
+- +, -, 
+    - expr | identifier + expr | identifier -> expr 
+    - same
+- &&, ||,
+    - expr | identifier && expr | identifier -> expr 
+    - same
+- ==, !=, >, <, >=, <=
+    - left ass (meaning expr sign expr -> expr for sign being ==, !=, >, < >=, <=)
+

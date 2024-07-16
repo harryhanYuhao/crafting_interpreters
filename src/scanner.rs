@@ -324,7 +324,7 @@ pub(crate) fn scan_iteration(
                 *line,
                 *column,
             ))
-        }
+        },
         //TODO: ERROR HANDLING
         _ => {
             return Err(ErrorLox::from_filename(
