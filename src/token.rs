@@ -56,6 +56,8 @@ pub enum TokenType {
     VAR,
     WHILE,
     EOF,
+    // Dummy Token
+    DUMMY
 }
 
 impl fmt::Debug for TokenType {
@@ -105,12 +107,13 @@ impl fmt::Debug for TokenType {
             TokenType::VAR => write!(f, "VAR"),
             TokenType::WHILE => write!(f, "WHILE"),
             TokenType::EOF => write!(f, "EOF"),
+            TokenType::DUMMY => write!(f, "DUMMY"),
         }
     }
 }
 
 // This list only used for generating random TokenType from index
-static TOKEN_TYPE_LIST: [TokenType; 43] = [
+static TOKEN_TYPE_LIST: [TokenType; 44] = [
     TokenType::LEFT_PAREN,
     TokenType::RIGHT_PAREN,
     TokenType::LEFT_BRACE,
@@ -154,6 +157,7 @@ static TOKEN_TYPE_LIST: [TokenType; 43] = [
     TokenType::VAR,
     TokenType::WHILE,
     TokenType::EOF,
+    TokenType::DUMMY,
 ];
 
 lazy_static! {
@@ -213,6 +217,15 @@ impl Token {
             lexeme,
             line,
             column,
+        }
+    }
+    
+    pub fn dummy() -> Self {
+        Token{
+            token_type: TokenType::DUMMY,
+            lexeme: String::new(),
+            line: 0,
+            column: 0
         }
     }
 

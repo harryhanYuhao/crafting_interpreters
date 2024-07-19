@@ -34,13 +34,15 @@ fn read_lines(filename: &str) -> Vec<String> {
 /// run file process and execute the file line by line, as in run_prompt
 pub fn run_file(path: &str) -> Result<(), ErrorLox> {
     let mut line = 1;
-
     let mut parse_tree: ParseTreeUnfinshed = ParseTreeUnfinshed::new();
 
     for (index, lines) in read_lines(path).iter().enumerate() {
+        // DEBUG: TOKEN
         println!("Debugging run_file, Line: {}", index + 1);
         println!("{lines}");
+
         let tokens: TokenArcVec = scanner::scan_tokens(lines, &mut line)?;
+        
         // DEBUG: TOKEN
         for i in tokens.iter() {
             println!("Scanned Token: {:?}", i.lock().unwrap());
@@ -48,7 +50,7 @@ pub fn run_file(path: &str) -> Result<(), ErrorLox> {
         let res = parser::parse(&tokens, &mut parse_tree);
         match res {
             ParseState::Err(e) => {
-                println!("{:?}", e);
+                return Err(e);
             }
             _ => {}
         }

@@ -1,10 +1,13 @@
-use std::fmt;
 use std::error::Error;
+use std::fmt;
 
+use crate::token::Token;
+use crate::AST_Node::AST_Node;
 use colored::*;
+use std::convert::From;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::process::exit;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug)]
 pub enum ErrorType {
@@ -35,12 +38,7 @@ pub struct ErrorLox {
 }
 
 impl ErrorLox {
-    pub fn from_filename(
-        description: &str,
-        row: usize,
-        column: usize,
-        filename: &str,
-    ) -> Self {
+    pub fn from_filename(description: &str, row: usize, column: usize, filename: &str) -> Self {
         let source = Source::from_filename(filename);
         ErrorLox {
             description: description.to_string(),
@@ -51,7 +49,43 @@ impl ErrorLox {
         }
     }
 
-    pub fn panic(&self){
+    pub fn from_token(token: &Token, description: &str, filename: &str) -> Self {
+        let column = token.column;
+        let row = token.line;
+        let source = Source::from_filename(filename);
+        ErrorLox {
+            description: description.to_string(),
+            error_type: ErrorType::UnKnown,
+            row,
+            column,
+            source,
+        }
+    }
+
+    pub fn from_arc_mutex_token(
+        token: Arc<Mutex<Token>>,
+        description: &str,
+        filename: &str,
+    ) -> Self {
+        let tmp = token.lock().unwrap();
+        ErrorLox::from_token(&tmp, description, filename)
+    }
+
+    pub fn from_ast_node(node: &AST_Node, description: &str, filename: &str) -> Self {
+        let token = node.get_token();
+        ErrorLox::from_arc_mutex_token(token, description, filename)
+    }
+
+    pub fn from_arc_mutex_ast_node(
+        node: Arc<Mutex<AST_Node>>,
+        description: &str,
+        filename: &str,
+    ) -> Self {
+        let node = node.lock().unwrap();
+        ErrorLox::from_ast_node(&node, description, filename)
+    }
+
+    pub fn panic(&self) {
         println!("{}", self);
     }
 }
@@ -102,6 +136,7 @@ impl fmt::Display for ErrorLox {
         )
     }
 }
+
 impl Error for ErrorLox {}
 
 #[cfg(test)]

@@ -92,25 +92,43 @@ Variables must be declared before use.
 
 ## Parsing Grammar
 
-There are two parsing objects in our design: statement (stmt) and expression (expr).
+There are several parsing objects in our design
+
+- statement (stmt) 
+- expression (expr)
+- identifier (idt)
+- various tokens 
 
 Expression is something that can be evaluated into a value that can be assigned to an identifier. 
 
-Statement must be executed and return an expression. Significantly, if some tokens are  arranged as a statement tree, this particular tree is complete and shall  no longer be modified, although the tree itself can be attached to other trees.
+
+Identifier are names of variables or functions. 
+
+Statement can be executed and will return an expression. 
+Significantly, if some tokens are arranged as a statement tree, this particular tree is complete and shall no longer be modified, although the tree itself can be attached to other trees.
+
+As 
 
 This list also shows the order or precedence
 
 - (expr) -> expr 
 - expr, expr -> expr
 - *, %, / 
-    - expr | identifier * expr  | identifier -> expr 
+    - expr | identifier * expr | identifier -> expr 
     - same
 - +, -, 
     - expr | identifier + expr | identifier -> expr 
     - same
+- ,
+    - expr, expr -> expr 
+- identifier(expr) -> expr, this is function call
 - &&, ||,
     - expr | identifier && expr | identifier -> expr 
     - same
 - ==, !=, >, <, >=, <=
     - left ass (meaning expr sign expr -> expr for sign being ==, !=, >, < >=, <=)
-
+- =,
+    identifer = expr -> stmt(assignment)
+- var stmt(assignment) -> stmt(declaration)
+- stmt; stmt -> stmt(compound)
+- stmt \n stmt -> stmt(compond)
