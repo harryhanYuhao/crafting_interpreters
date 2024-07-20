@@ -48,6 +48,7 @@ impl ParseTreeUnfinshed {
         self.content[index] = node;
     }
 
+    // TODO: Proper error handling
     pub fn get_finished_node(&self) -> Option<Arc<Mutex<AST_Node>>> {
         if self.content.len() > 1 {
             panic!("Tree is in unfinished state!");
@@ -159,13 +160,15 @@ fn real_parse(tree: &mut ParseTreeUnfinshed) -> ParseState {
     error_handle_SubParseState!(parse_ternary_left_assoc(
         tree,
         &vec![
-            AST_Type::Expr,
+            AST_Type::Expr(ExprType::Paren),
+            AST_Type::Expr(ExprType::Normal),
             AST_Type::PotentialStmt,
             AST_Type::Identifier
         ],
         &vec![TokenType::STAR, TokenType::SLASH, TokenType::PERCENT],
         &vec![
-            AST_Type::Expr,
+            AST_Type::Expr(ExprType::Paren),
+            AST_Type::Expr(ExprType::Normal),
             AST_Type::PotentialStmt,
             AST_Type::Identifier
         ],
@@ -174,13 +177,15 @@ fn real_parse(tree: &mut ParseTreeUnfinshed) -> ParseState {
     error_handle_SubParseState!(parse_ternary_left_assoc(
         tree,
         &vec![
-            AST_Type::Expr,
+            AST_Type::Expr(ExprType::Paren),
+            AST_Type::Expr(ExprType::Normal),
             AST_Type::PotentialStmt,
             AST_Type::Identifier
         ],
         &vec![TokenType::PLUS, TokenType::MINUS],
         &vec![
-            AST_Type::Expr,
+            AST_Type::Expr(ExprType::Paren),
+            AST_Type::Expr(ExprType::Normal),
             AST_Type::PotentialStmt,
             AST_Type::Identifier
         ],
@@ -263,7 +268,7 @@ fn parse_parenthesis(tree: &mut ParseTreeUnfinshed) -> SubParseState {
         "test.lox",
     ) {
         Ok(ok) => ok,
-        Err(e) => return SubParseState::Err(e)
+        Err(e) => return SubParseState::Err(e),
     };
 
     for (start, end) in locations.into_iter().rev() {
@@ -286,14 +291,22 @@ fn parse_parenthesis(tree: &mut ParseTreeUnfinshed) -> SubParseState {
                 match res {
                     // in such case the parenethesis is just by itself
                     None => {
-                        tree.remove(start);
                         tree.remove(end);
+                        AST_Node::set_arc_mutex_AST_Type(
+                            tree[start].clone(),
+                            AST_Type::Expr(ExprType::Paren),
+                        );
                     }
                     Some(result) => {
                         for _ in (start + 1)..=(end) {
                             tree.remove(start + 1);
                         }
-                        tree.replace(start, result);
+                        // tree.replace(start, result);
+                        AST_Node::set_arc_mutex_AST_Type(
+                            tree[start].clone(),
+                            AST_Type::Expr(ExprType::Paren),
+                        );
+                        AST_Node::arc_mutex_append_child(tree[start].clone(), result);
                     }
                 }
             }
@@ -334,7 +347,7 @@ fn parse_ternary_left_assoc(
         // Construct the tree
         {
             let mut root = tree[i + 1].lock().unwrap();
-            root.set_AST_Type(AST_Type::Expr);
+            root.set_AST_Type(AST_Type::Expr(ExprType::Normal));
             root.append_child(tree[i].clone());
             root.append_child(tree[i + 2].clone());
         }

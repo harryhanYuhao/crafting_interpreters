@@ -5,7 +5,7 @@ use colored::*;
 
 #[test]
 fn plus_minus_paren() {
-    let input = "(x+1) + (x + 2) ";
+    let input = "(x+1) + (x + 2) ()";
     // println!("{}: {}", "input".bright_blue().bold(), input);
     println!("{}", "Parser Tree:".cyan().bold());
     let mut line = 0;

@@ -111,6 +111,7 @@ As
 
 This list also shows the order or precedence
 
+- () -> paren
 - (expr) -> expr 
 - expr, expr -> expr
 - *, %, / 

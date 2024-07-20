@@ -6,6 +6,12 @@ use std::error::Error;
 use std::fmt;
 use std::sync::{Arc, Mutex};
 
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub enum ExprType {
+    Normal,
+    Paren,
+}
+
 /// Potential fields are for usage during parse when the type may not be identified
 /// Copulatives are tokens including `+`, `-`, `*`, `/`
 /// which can be and must be placed between two expressions
@@ -15,7 +21,7 @@ pub(crate) enum AST_Type {
     Unfinished,
     Stmt,
     PotentialStmt,
-    Expr,
+    Expr(ExprType),
     PotentialExpr,
     Copulative,
     Identifier,
@@ -26,7 +32,7 @@ impl From<Arc<Mutex<Token>>> for AST_Type {
     fn from(s: Arc<Mutex<Token>>) -> Self {
         let res: AST_Type;
         match Token::get_token_type_from_arc(s.clone()) {
-            TokenType::NUMBER => res = AST_Type::Expr,
+            TokenType::NUMBER => res = AST_Type::Expr(ExprType::Normal),
             TokenType::IDENTIFIER => res = AST_Type::Identifier,
             TokenType::PLUS
             | TokenType::PERCENT
@@ -57,13 +63,13 @@ pub struct AST_Node {
 }
 
 impl AST_Node {
-    pub(crate) fn get_AST_Type(&self) -> &AST_Type {
-        &self.AST_Type
+    pub(crate) fn get_AST_Type(&self) -> AST_Type {
+        self.AST_Type.clone()
     }
 
     pub(crate) fn get_AST_Type_from_arc(arc: Arc<Mutex<AST_Node>>) -> AST_Type {
         let node = arc.lock().unwrap();
-        node.AST_Type.clone()
+        AST_Node::get_AST_Type(&node)
     }
 
     pub(crate) fn get_token(&self) -> Arc<Mutex<Token>> {
@@ -72,6 +78,11 @@ impl AST_Node {
 
     pub(crate) fn set_AST_Type(&mut self, new_type: AST_Type) {
         self.AST_Type = new_type;
+    }
+
+    pub(crate) fn set_arc_mutex_AST_Type(node: Arc<Mutex<AST_Node>>, new_type: AST_Type) {
+        let mut input = node.lock().unwrap();
+        input.set_AST_Type(new_type);
     }
 
     pub(crate) fn get_token_from_arc(arc: Arc<Mutex<AST_Node>>) -> Arc<Mutex<Token>> {
@@ -94,7 +105,10 @@ impl AST_Node {
         false
     }
 
-    pub(crate) fn arc_belongs_to_Token_type(arc: Arc<Mutex<AST_Node>>, types: &[TokenType]) -> bool {
+    pub(crate) fn arc_belongs_to_Token_type(
+        arc: Arc<Mutex<AST_Node>>,
+        types: &[TokenType],
+    ) -> bool {
         let node_type = AST_Node::get_token_type_from_arc(arc);
         for i in types {
             if node_type == *i {
@@ -106,6 +120,12 @@ impl AST_Node {
 
     pub(crate) fn append_child(&mut self, node: Arc<Mutex<AST_Node>>) {
         self.children.push(node.clone());
+    }
+
+    pub(crate) fn arc_mutex_append_child(input: Arc<Mutex<AST_Node>>, child: Arc<Mutex<AST_Node>>) {
+        let mut input = input.lock().unwrap();
+        let input = &mut input;
+        input.append_child(child);
     }
 
     pub fn get_level(&self) -> usize {
@@ -193,6 +213,14 @@ impl AST_Node {
         root.children.push(right.into());
 
         root
+    }
+
+    pub(crate) fn dummy_node(AST_Type: AST_Type) -> Self {
+        AST_Node {
+            AST_Type,
+            token: Token::dummy().into(),
+            children: Vec::new(),
+        }
     }
 }
 
