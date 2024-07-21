@@ -111,25 +111,23 @@ As
 
 This list also shows the order or precedence
 
-- () -> paren
-- (expr) -> expr 
-- expr, expr -> expr
+- (): Expr(Paren) 
+- (expr): Expr(Paren) -> expr
+- expr-1, expr-2,... , expr-n : expr(comma) -> {expr-1, expr-2, ..., expr-n }
 - *, %, / 
-    - expr | identifier * expr | identifier -> expr 
+    - expr | identifier * expr | identifier : expr 
     - same
 - +, -, 
-    - expr | identifier + expr | identifier -> expr 
+    - expr | identifier + expr | identifier : expr 
     - same
-- ,
-    - expr, expr -> expr 
-- identifier(expr) -> expr, this is function call
+- identifier(expr) : expr, this is function call
 - &&, ||,
-    - expr | identifier && expr | identifier -> expr 
+    - expr | identifier && expr | identifier : expr 
     - same
 - ==, !=, >, <, >=, <=
     - left ass (meaning expr sign expr -> expr for sign being ==, !=, >, < >=, <=)
 - =,
-    identifer = expr -> stmt(assignment)
-- var stmt(assignment) -> stmt(declaration)
+    identifer = expr : stmt(assignment)
+- var stmt(assignment) : stmt(declaration)
 - stmt; stmt -> stmt(compound)
 - stmt \n stmt -> stmt(compond)

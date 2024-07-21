@@ -22,6 +22,7 @@ pub fn scan_tokens(source: &str, line: &mut usize) -> Result<Vec<Arc<Mutex<Token
             None => {}
         }
     }
+    token_vec.push(Token::new(TokenType::STMT_SEP, String::from("\\xa"), *line, column).into());
     Ok(token_vec)
 }
 
@@ -324,7 +325,7 @@ pub(crate) fn scan_iteration(
                 *line,
                 *column,
             ))
-        },
+        }
         //TODO: ERROR HANDLING
         _ => {
             return Err(ErrorLox::from_filename(

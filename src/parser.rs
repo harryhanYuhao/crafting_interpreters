@@ -172,6 +172,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed) -> ParseState {
             AST_Type::PotentialStmt,
             AST_Type::Identifier
         ],
+        AST_Type::Expr(ExprType::Normal)
     ));
     // parse plus minus
     error_handle_SubParseState!(parse_ternary_left_assoc(
@@ -189,6 +190,38 @@ fn real_parse(tree: &mut ParseTreeUnfinshed) -> ParseState {
             AST_Type::PotentialStmt,
             AST_Type::Identifier
         ],
+        AST_Type::Expr(ExprType::Normal)
+    ));
+
+    // parse assignment
+    error_handle_SubParseState!(parse_ternary_left_assoc(
+        tree,
+        &vec![AST_Type::Identifier],
+        &vec![TokenType::EQUAL],
+        &vec![
+            AST_Type::Expr(ExprType::Paren),
+            AST_Type::Expr(ExprType::Normal),
+            AST_Type::Identifier
+        ],
+        AST_Type::Stmt(StmtType::Assignment)
+    ));
+
+    error_handle_SubParseState!(parse_var(
+        tree,
+        &vec![TokenType::VAR],
+        &vec![AST_Type::Stmt(StmtType::Assignment)],
+        AST_Type::Stmt(StmtType::Declaration),
+    ));
+
+    // parse statements like expr; into stmt(normal) -> expr
+    error_handle_SubParseState!(parse_post_single(
+        tree,
+        &vec![
+            AST_Type::Expr(ExprType::Paren),
+            AST_Type::Expr(ExprType::Normal)
+        ],
+        &vec![TokenType::STMT_SEP],
+        AST_Type::Stmt(StmtType::Normal)
     ));
 
     if tree.len() == 1 {
@@ -317,19 +350,25 @@ fn parse_parenthesis(tree: &mut ParseTreeUnfinshed) -> SubParseState {
 
 /// This function constructs the ternary left associtive operators into tree, whose grammer is
 /// similar to +, -, *, /
+/// It will set the resulting AST_Type as expr(normal)
+/// TODO:
+/// It shall return error of the operator starts in the beginning of the line or at the end of the
+/// line. But recall we are parsing the whole assembled tree
 fn parse_ternary_left_assoc(
     tree: &mut ParseTreeUnfinshed,
     left_AST_types: &[AST_Type],
     operator_token_types: &[TokenType],
     right_AST_types: &[AST_Type],
+    result_type: AST_Type,
 ) -> SubParseState {
+    // if the operator appears at the beginning or at the end, return error.
+
     let mut length = tree.len();
     let mut i = 0;
 
     // ignore the last two tokens
     while i + 2 < length {
         // match the type of the first token
-        // match get_AST_Type_from_arc(Arc::clone(&tree[i])) {
         if !AST_Node::arc_belongs_to_AST_type(tree[i].clone(), left_AST_types) {
             i += 1;
             continue;
@@ -347,7 +386,7 @@ fn parse_ternary_left_assoc(
         // Construct the tree
         {
             let mut root = tree[i + 1].lock().unwrap();
-            root.set_AST_Type(AST_Type::Expr(ExprType::Normal));
+            root.set_AST_Type(result_type.clone());
             root.append_child(tree[i].clone());
             root.append_child(tree[i + 2].clone());
         }
@@ -359,5 +398,76 @@ fn parse_ternary_left_assoc(
         length -= 2;
         // skipping i += 1; the new node needs to be parsed again
     }
+    SubParseState::Finished
+}
+
+/// parse statements like expr; into stmt(normal) -> expr
+fn parse_post_single(
+    tree: &mut ParseTreeUnfinshed,
+    ast_type: &[AST_Type],
+    operator_token_type: &[TokenType],
+    result_type: AST_Type,
+) -> SubParseState {
+    let mut length = tree.len();
+    let mut i = 0;
+
+    while i + 1 < length {
+        if !AST_Node::arc_belongs_to_AST_type(tree[i].clone(), ast_type) {
+            i += 1;
+            continue;
+        }
+        if !AST_Node::arc_belongs_to_Token_type(tree[i + 1].clone(), operator_token_type) {
+            i += 1;
+            continue;
+        }
+        let node = tree[i + 1].clone();
+        let mut node = node.lock().unwrap();
+        node.set_AST_Type(result_type.clone());
+        node.append_child(tree[i].clone());
+        tree.remove(i);
+        length -= 1;
+        i += 1;
+    }
+    SubParseState::Finished
+}
+
+fn parse_var(
+    tree: &mut ParseTreeUnfinshed,
+    operator_token_type: &[TokenType],
+    ast_type: &[AST_Type],
+    result_type: AST_Type,
+) -> SubParseState {
+    let mut length = tree.len();
+    let mut i = 0;
+
+    while i + 1 < length {
+        if !AST_Node::arc_belongs_to_Token_type(tree[i].clone(), operator_token_type) {
+            i += 1;
+            continue;
+        }
+        if !AST_Node::arc_belongs_to_AST_type(tree[i + 1].clone(), ast_type) {
+            i += 1;
+            continue;
+        }
+
+        let node = tree[i + 1].clone();
+        let mut node = node.lock().unwrap();
+        node.set_AST_Type(result_type.clone());
+        tree.remove(i);
+        length -= 1;
+        i += 1;
+    }
+    SubParseState::Finished
+}
+
+fn parse_stmt_into_compound_stmt(tree: &mut ParseTreeUnfinshed) -> SubParseState {
+    let mut program = AST_Node::new(AST_Type::Stmt(StmtType::Program), Token::dummy());
+    let mut length = tree.len();
+    let mut i = 0;
+
+    while i < length {
+        i += 1;
+    }
+
     SubParseState::Finished
 }

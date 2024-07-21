@@ -12,6 +12,15 @@ pub enum ExprType {
     Paren,
 }
 
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub enum StmtType {
+    Normal,
+    Bracketed,
+    Assignment,
+    Declaration,
+    Compound,
+}
+
 /// Potential fields are for usage during parse when the type may not be identified
 /// Copulatives are tokens including `+`, `-`, `*`, `/`
 /// which can be and must be placed between two expressions
@@ -19,7 +28,7 @@ pub enum ExprType {
 #[allow(non_camel_case_types)]
 pub(crate) enum AST_Type {
     Unfinished,
-    Stmt,
+    Stmt(StmtType),
     PotentialStmt,
     Expr(ExprType),
     PotentialExpr,
@@ -47,6 +56,9 @@ impl From<Arc<Mutex<Token>>> for AST_Type {
             | TokenType::LESS_EQUAL => {
                 res = AST_Type::Copulative;
             }
+            TokenType::STMT_SEP => {
+                res = AST_Type::Stmt(StmtType::Normal);
+            }
             _ => res = AST_Type::Unknown,
         }
         res
@@ -63,6 +75,30 @@ pub struct AST_Node {
 }
 
 impl AST_Node {
+    pub(crate) fn is_stmt(&self) -> bool {
+        match self.AST_Type {
+            AST_Type::Stmt(_) => return true,
+            _ => return false,
+        }
+    }
+
+    pub(crate) fn is_arc_mutex_stmt(input: Arc<Mutex<AST_Node>>) -> bool {
+        let node = input.lock().unwrap();
+        node.is_stmt()
+    }
+
+    pub(crate) fn is_expr(&self) -> bool {
+        match self.AST_Type {
+            AST_Type::Expr(_) => return true,
+            _ => return false,
+        }
+    }
+
+    pub(crate) fn is_arc_mutex_expr(input: Arc<Mutex<AST_Node>>) -> bool {
+        let node = input.lock().unwrap();
+        node.is_expr()
+    }
+
     pub(crate) fn get_AST_Type(&self) -> AST_Type {
         self.AST_Type.clone()
     }
@@ -190,6 +226,14 @@ impl AST_Node {
                 token: Arc::new(Mutex::new(Token::random())),
                 children,
             }
+        }
+    }
+
+    pub(crate) fn new(AST_Type: AST_Type, token: Token) -> Self {
+        AST_Node {
+            AST_Type,
+            token: token.into(),
+            children: Vec::new(),
         }
     }
 
