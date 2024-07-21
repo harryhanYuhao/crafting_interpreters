@@ -201,6 +201,11 @@ impl AST_Node {
         self.get_num_of_children() > 0
     }
 
+    pub(crate) fn arc_mutex_has_children(input: Arc<Mutex<AST_Node>>) -> bool {
+        let node = input.lock().unwrap();
+        (&node).has_children()
+    }
+
     fn get_num_of_children(&self) -> usize {
         self.children.len()
     }

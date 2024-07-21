@@ -230,7 +230,6 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         return ParseState::Finished;
     }
 
-
     return ParseState::Unfinished;
 }
 
@@ -308,7 +307,6 @@ fn parse_parenthesis(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseSta
         Err(e) => return SubParseState::Err(e),
     };
 
-
     for (start, end) in locations.into_iter().rev() {
         // the work begin
         // recursive call;
@@ -320,7 +318,7 @@ fn parse_parenthesis(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseSta
                 return SubParseState::Err(ErrorLox::from_arc_mutex_ast_node(
                     tree[start].clone(),
                     "Incomplete Inner Expr",
-                    source
+                    source,
                 ));
             }
             ParseState::Finished => {
@@ -466,44 +464,41 @@ fn parse_var(
 }
 
 /// The final, finished parse tree shall consist of a single root of type Stmt(Compound). All of
-/// the substatment shall be children of this node. 
+/// the substatment shall be children of this node.
 /// This function arrange vector of statement into one node.
 fn parse_stmt_into_compound_stmt(tree: &mut ParseTreeUnfinshed) -> SubParseState {
-    let length = tree.len();
-    let mut i = 0;
-
-    if length == 1 {
-        return SubParseState::Finished;
-    }
-
-    while i < length {
-        if !AST_Node::is_arc_mutex_stmt(tree[i].clone()) {
-            return SubParseState::Unfinished;
-        }
-        i += 1;
-    }
-
-    // all of the node in tree are statement: make them into one tree
-
-    let mut program = AST_Node::new(AST_Type::Stmt(StmtType::Compound), Token::dummy());
     let mut length = tree.len();
     let mut i = 0;
 
+    let mut program: Arc<Mutex<AST_Node>> =
+        AST_Node::new(AST_Type::Stmt(StmtType::Compound), Token::dummy()).into();
+
     while i < length {
-        if AST_Node::is_arc_mutex_compound_stmt(tree[i].clone()) {
-            let node = tree[i].clone();
-            let node = node.lock().unwrap();
-            for i in node.get_children() {
-                program.append_child(i.clone());
+        if AST_Node::is_arc_mutex_stmt(tree[i].clone()) {
+            let has_child : bool =AST_Node::arc_mutex_has_children(program.clone());
+            if AST_Node::is_arc_mutex_compound_stmt(tree[i].clone()) {
+                let node = tree[i].clone();
+                let node = node.lock().unwrap();
+                for i in node.get_children() {
+                    AST_Node::arc_mutex_append_child(program.clone(), i.clone());
+                }
+            } else {
+                AST_Node::arc_mutex_append_child(program.clone(), tree[i].clone());
+            }
+            if has_child {
+                tree.remove(i);
+                length -= 1;
+            } else {
+                tree.replace(i, program.clone());
+                i += 1;
             }
         } else {
-            program.append_child(tree[i].clone());
+            i += 1;
+            if AST_Node::arc_mutex_has_children(program.clone()) {
+                program = AST_Node::new(AST_Type::Stmt(StmtType::Compound), Token::dummy()).into();
+            }
         }
-        tree.remove(i);
-        length -= 1;
     }
-
-    tree.push(program.into());
 
     SubParseState::Finished
 }
