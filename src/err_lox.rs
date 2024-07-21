@@ -99,7 +99,8 @@ impl fmt::Display for ErrorLox {
 
         let detailed_desr: String = match &self.source {
             Source::FileName(name) => {
-                let reader = BufReader::new(File::open(name).expect("Cannot open file"));
+                let reader =
+                    BufReader::new(File::open(name).expect(&format!("Cannot open file {name}")));
                 let mut content_at_nth = reader
                     .lines()
                     .nth(self.row - 1)

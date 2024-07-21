@@ -87,6 +87,27 @@ impl AST_Node {
         node.is_stmt()
     }
 
+    pub(crate) fn is_compound_stmt(&self) -> bool {
+        match &self.AST_Type {
+            AST_Type::Stmt(inner) => {
+                match inner {
+                    StmtType::Compound => {
+                        return true;
+                    }
+                    _ => {
+                        return false;
+                    }
+                }
+            },
+            _ => return false,
+        }
+    }
+
+    pub (crate) fn is_arc_mutex_compound_stmt(input: Arc<Mutex<AST_Node>>) -> bool {
+        let node = input.lock().unwrap();
+        AST_Node::is_compound_stmt(&node)
+    }
+
     pub(crate) fn is_expr(&self) -> bool {
         match self.AST_Type {
             AST_Type::Expr(_) => return true,

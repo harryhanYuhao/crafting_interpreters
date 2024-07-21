@@ -47,7 +47,7 @@ pub fn run_file(path: &str) -> Result<(), ErrorLox> {
         for i in tokens.iter() {
             println!("Scanned Token: {:?}", i.lock().unwrap());
         }
-        let res = parser::parse(&tokens, &mut parse_tree);
+        let res = parser::parse(&tokens, &mut parse_tree, path);
         match res {
             ParseState::Err(e) => {
                 return Err(e);

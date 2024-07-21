@@ -117,11 +117,11 @@ impl fmt::Debug for ParseTreeUnfinshed {
 }
 
 /// Public API for parsing the tree
-pub fn parse(tokens: &TokenArcVec, tree: &mut ParseTreeUnfinshed) -> ParseState {
+pub fn parse(tokens: &TokenArcVec, tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
     let input_list = ParseTreeUnfinshed::from(tokens);
     tree.extend(input_list);
 
-    return real_parse(tree);
+    return real_parse(tree, source);
 }
 
 /// This is for subparse: not available for public api
@@ -149,12 +149,12 @@ macro_rules! error_handle_SubParseState {
 }
 
 // this is the real parse. Define here for recursion
-fn real_parse(tree: &mut ParseTreeUnfinshed) -> ParseState {
+fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
     if tree.len() <= 1 {
         return ParseState::Finished;
     }
 
-    error_handle_SubParseState!(parse_parenthesis(tree));
+    error_handle_SubParseState!(parse_parenthesis(tree, source));
 
     // parse times, divide, and modular
     error_handle_SubParseState!(parse_ternary_left_assoc(
@@ -172,7 +172,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed) -> ParseState {
             AST_Type::PotentialStmt,
             AST_Type::Identifier
         ],
-        AST_Type::Expr(ExprType::Normal)
+        AST_Type::Expr(ExprType::Normal),
     ));
     // parse plus minus
     error_handle_SubParseState!(parse_ternary_left_assoc(
@@ -190,7 +190,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed) -> ParseState {
             AST_Type::PotentialStmt,
             AST_Type::Identifier
         ],
-        AST_Type::Expr(ExprType::Normal)
+        AST_Type::Expr(ExprType::Normal),
     ));
 
     // parse assignment
@@ -203,7 +203,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed) -> ParseState {
             AST_Type::Expr(ExprType::Normal),
             AST_Type::Identifier
         ],
-        AST_Type::Stmt(StmtType::Assignment)
+        AST_Type::Stmt(StmtType::Assignment),
     ));
 
     error_handle_SubParseState!(parse_var(
@@ -221,12 +221,16 @@ fn real_parse(tree: &mut ParseTreeUnfinshed) -> ParseState {
             AST_Type::Expr(ExprType::Normal)
         ],
         &vec![TokenType::STMT_SEP],
-        AST_Type::Stmt(StmtType::Normal)
+        AST_Type::Stmt(StmtType::Normal),
     ));
+
+    error_handle_SubParseState!(parse_stmt_into_compound_stmt(tree));
 
     if tree.len() == 1 {
         return ParseState::Finished;
     }
+
+
     return ParseState::Unfinished;
 }
 
@@ -293,29 +297,30 @@ pub(crate) fn get_delimiter_location(
 }
 
 // recursively parse parenthesis
-fn parse_parenthesis(tree: &mut ParseTreeUnfinshed) -> SubParseState {
+fn parse_parenthesis(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
     let locations = match get_delimiter_location(
         TokenType::LEFT_PAREN,
         TokenType::RIGHT_PAREN,
         &tree,
-        "test.lox",
+        source,
     ) {
         Ok(ok) => ok,
         Err(e) => return SubParseState::Err(e),
     };
 
+
     for (start, end) in locations.into_iter().rev() {
         // the work begin
         // recursive call;
         let mut slice = tree.slice(start + 1, end);
-        let sup_parse = real_parse(&mut slice);
+        let sup_parse = real_parse(&mut slice, source);
         match sup_parse {
             ParseState::Err(e) => return SubParseState::Err(e),
             ParseState::Unfinished => {
                 return SubParseState::Err(ErrorLox::from_arc_mutex_ast_node(
                     tree[start].clone(),
-                    "Extra right delimiter",
-                    "test.lox",
+                    "Incomplete Inner Expr",
+                    source
                 ));
             }
             ParseState::Finished => {
@@ -460,14 +465,45 @@ fn parse_var(
     SubParseState::Finished
 }
 
+/// The final, finished parse tree shall consist of a single root of type Stmt(Compound). All of
+/// the substatment shall be children of this node. 
+/// This function arrange vector of statement into one node.
 fn parse_stmt_into_compound_stmt(tree: &mut ParseTreeUnfinshed) -> SubParseState {
-    let mut program = AST_Node::new(AST_Type::Stmt(StmtType::Program), Token::dummy());
+    let length = tree.len();
+    let mut i = 0;
+
+    if length == 1 {
+        return SubParseState::Finished;
+    }
+
+    while i < length {
+        if !AST_Node::is_arc_mutex_stmt(tree[i].clone()) {
+            return SubParseState::Unfinished;
+        }
+        i += 1;
+    }
+
+    // all of the node in tree are statement: make them into one tree
+
+    let mut program = AST_Node::new(AST_Type::Stmt(StmtType::Compound), Token::dummy());
     let mut length = tree.len();
     let mut i = 0;
 
     while i < length {
-        i += 1;
+        if AST_Node::is_arc_mutex_compound_stmt(tree[i].clone()) {
+            let node = tree[i].clone();
+            let node = node.lock().unwrap();
+            for i in node.get_children() {
+                program.append_child(i.clone());
+            }
+        } else {
+            program.append_child(tree[i].clone());
+        }
+        tree.remove(i);
+        length -= 1;
     }
+
+    tree.push(program.into());
 
     SubParseState::Finished
 }
