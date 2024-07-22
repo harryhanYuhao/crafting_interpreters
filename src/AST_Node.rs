@@ -15,7 +15,7 @@ pub enum ExprType {
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum StmtType {
     Normal,
-    Bracketed,
+    Braced,
     Assignment,
     Declaration,
     Compound,

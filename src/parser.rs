@@ -48,15 +48,37 @@ impl ParseTreeUnfinshed {
         self.content[index] = node;
     }
 
+    // TODO: How to properly identify the tree is finished parsing
     // TODO: Proper error handling
     pub fn get_finished_node(&self) -> Option<Arc<Mutex<AST_Node>>> {
         if self.content.len() > 1 {
-            panic!("Tree is in unfinished state!");
+            panic!("Internal Error: Tree is in unfinished state!");
         }
         if self.content.len() == 1 {
             return Some(self.content[0].clone());
         }
         None
+    }
+
+    fn contains_expr(&self) -> bool {
+        let mut i = 0;
+        let length = self.len();
+        while i < length {
+            if AST_Node::is_arc_mutex_expr(self[i].clone()) {
+                return true;
+            }
+            i += 1;
+        }
+        false
+    }
+
+    // TODO: How to properly identify the tree is finished parsing
+    // Recall to also modify get_finished_node
+    pub fn is_finished(&self) -> ParseState {
+        if self.len() == 1 {
+            return ParseState::Finished;
+        }
+        ParseState::Unfinished
     }
 }
 
@@ -155,6 +177,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
     }
 
     error_handle_SubParseState!(parse_parenthesis(tree, source));
+    error_handle_SubParseState!(parse_braces(tree, source));
 
     // parse times, divide, and modular
     error_handle_SubParseState!(parse_ternary_left_assoc(
@@ -226,11 +249,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
 
     error_handle_SubParseState!(parse_stmt_into_compound_stmt(tree));
 
-    if tree.len() == 1 {
-        return ParseState::Finished;
-    }
-
-    return ParseState::Unfinished;
+    tree.is_finished()
 }
 
 /// trying to find the matching location for left ... right. left token and right token shall
@@ -273,11 +292,12 @@ pub(crate) fn get_delimiter_location(
                     ret.push((start, i));
                 }
                 if count < 0 {
-                    return Err(ErrorLox::from_arc_mutex_ast_node(
+                    let e = ErrorLox::from_arc_mutex_ast_node(
                         tree[i].clone(),
                         "Extra right delimiter",
                         source,
-                    ));
+                    );
+                    return Err(e);
                 }
             }
             _ => {}
@@ -285,11 +305,13 @@ pub(crate) fn get_delimiter_location(
     }
 
     if count > 0 {
-        return Err(ErrorLox::from_arc_mutex_ast_node(
+        let mut e = ErrorLox::from_arc_mutex_ast_node(
             tree[tree.len() - 1].clone(),
             "Unpaired left delimiter",
             source,
-        ));
+        );
+        e.set_error_type(ErrorType::UnterminatedDelimiter);
+        return Err(e);
     }
 
     Ok(ret)
@@ -351,6 +373,67 @@ fn parse_parenthesis(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseSta
     SubParseState::Finished
 }
 
+fn parse_braces(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
+    let locations = match get_delimiter_location(
+        TokenType::LEFT_BRACE,
+        TokenType::RIGHT_BRACE,
+        &tree,
+        source,
+    ) {
+        Ok(ok) => ok,
+        Err(e) => match e.get_error_type() {
+            ErrorType::UnterminatedDelimiter => {
+                return SubParseState::Unfinished;
+            }
+            _ => {
+                return SubParseState::Err(e);
+            }
+        },
+    };
+
+    for (start, end) in locations.into_iter().rev() {
+        // the work begin
+        // recursive call;
+        let mut slice = tree.slice(start + 1, end);
+        let sup_parse = real_parse(&mut slice, source);
+        match sup_parse {
+            ParseState::Err(e) => return SubParseState::Err(e),
+            ParseState::Unfinished => {
+                return SubParseState::Err(ErrorLox::from_arc_mutex_ast_node(
+                    tree[start].clone(),
+                    "Incomplete Inner Expr",
+                    source,
+                ));
+            }
+            ParseState::Finished => {
+                let res = slice.get_finished_node();
+                // the parse result may be none
+                match res {
+                    // in such case the parenethesis is just by itself
+                    None => {
+                        tree.remove(end);
+                        AST_Node::set_arc_mutex_AST_Type(
+                            tree[start].clone(),
+                            AST_Type::Stmt(StmtType::Braced),
+                        );
+                    }
+                    Some(result) => {
+                        for _ in (start + 1)..=(end) {
+                            tree.remove(start + 1);
+                        }
+                        // tree.replace(start, result);
+                        AST_Node::set_arc_mutex_AST_Type(
+                            tree[start].clone(),
+                            AST_Type::Stmt(StmtType::Braced),
+                        );
+                        AST_Node::arc_mutex_append_child(tree[start].clone(), result);
+                    }
+                }
+            }
+        }
+    }
+    SubParseState::Finished
+}
 /// This function constructs the ternary left associtive operators into tree, whose grammer is
 /// similar to +, -, *, /
 /// It will set the resulting AST_Type as expr(normal)
@@ -466,36 +549,43 @@ fn parse_var(
 /// The final, finished parse tree shall consist of a single root of type Stmt(Compound). All of
 /// the substatment shall be children of this node.
 /// This function arrange vector of statement into one node.
+/// It creates an empty compound node at first and scans the tree
+/// If found a lone statement, the lone statement is appended into the compound node. If found a
+/// compound statement, two compound are merge. The compound statement was then inserted into the
+/// tree properly
+/// If expressions are found, they are left alone. This is important, as the result of parsing
+/// could be an expression and not a statement
 fn parse_stmt_into_compound_stmt(tree: &mut ParseTreeUnfinshed) -> SubParseState {
     let mut length = tree.len();
     let mut i = 0;
 
-    let mut program: Arc<Mutex<AST_Node>> =
+    let mut compound: Arc<Mutex<AST_Node>> =
         AST_Node::new(AST_Type::Stmt(StmtType::Compound), Token::dummy()).into();
 
     while i < length {
         if AST_Node::is_arc_mutex_stmt(tree[i].clone()) {
-            let has_child : bool =AST_Node::arc_mutex_has_children(program.clone());
+            let has_child: bool = AST_Node::arc_mutex_has_children(compound.clone());
             if AST_Node::is_arc_mutex_compound_stmt(tree[i].clone()) {
                 let node = tree[i].clone();
                 let node = node.lock().unwrap();
                 for i in node.get_children() {
-                    AST_Node::arc_mutex_append_child(program.clone(), i.clone());
+                    AST_Node::arc_mutex_append_child(compound.clone(), i.clone());
                 }
             } else {
-                AST_Node::arc_mutex_append_child(program.clone(), tree[i].clone());
+                AST_Node::arc_mutex_append_child(compound.clone(), tree[i].clone());
             }
             if has_child {
                 tree.remove(i);
                 length -= 1;
             } else {
-                tree.replace(i, program.clone());
+                tree.replace(i, compound.clone());
                 i += 1;
             }
         } else {
+            // in such case the node is expr
             i += 1;
-            if AST_Node::arc_mutex_has_children(program.clone()) {
-                program = AST_Node::new(AST_Type::Stmt(StmtType::Compound), Token::dummy()).into();
+            if AST_Node::arc_mutex_has_children(compound.clone()) {
+                compound = AST_Node::new(AST_Type::Stmt(StmtType::Compound), Token::dummy()).into();
             }
         }
     }

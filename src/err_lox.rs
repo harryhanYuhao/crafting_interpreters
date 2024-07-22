@@ -3,16 +3,18 @@ use std::fmt;
 
 use crate::token::Token;
 use crate::AST_Node::AST_Node;
+use clap::error::ErrorKind;
 use colored::*;
 use std::convert::From;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::sync::{Arc, Mutex};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorType {
     ParseErr,
     ScanErr,
+    UnterminatedDelimiter,
     UnKnown,
 }
 
@@ -87,6 +89,14 @@ impl ErrorLox {
 
     pub fn panic(&self) {
         println!("{}", self);
+    }
+    
+    pub fn set_error_type(&mut self, error_type: ErrorType) {
+        self.error_type = error_type;
+    }
+
+    pub fn get_error_type(&self) -> ErrorType {
+        self.error_type.clone()
     }
 }
 

@@ -125,7 +125,7 @@ pub(crate) fn scan_iteration(
         }
         '}' => {
             token = Some(Token::new(
-                TokenType::LEFT_BRACE,
+                TokenType::RIGHT_BRACE,
                 String::from(source_vec[start]),
                 *line,
                 *column,
@@ -133,7 +133,7 @@ pub(crate) fn scan_iteration(
         }
         '{' => {
             token = Some(Token::new(
-                TokenType::RIGHT_BRACE,
+                TokenType::LEFT_BRACE,
                 String::from(source_vec[start]),
                 *line,
                 *column,
@@ -297,7 +297,7 @@ pub(crate) fn scan_iteration(
         }
 
         // ignore
-        ' ' => {
+        ' '|'\t' => {
             *current = poke;
             token = None;
         }

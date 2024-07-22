@@ -24,7 +24,7 @@ fn plus_minus_paren() {
 #[test]
 fn delimiter_location() {
     let mut line = 0;
-    let input = "1 - 2";
+    let input = "{1 - 2}";
     let tokens: TokenArcVec = scanner::scan_tokens(input, &mut line).unwrap();
     let parse_tree = ParseTreeUnfinshed::from(&tokens);
     println!("{:?}", parse_tree);
