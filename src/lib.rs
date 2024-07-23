@@ -1,4 +1,4 @@
-#![allow(unused_imports)] 
+#![allow(unused_imports)]
 #[macro_use]
 extern crate lazy_static;
 
@@ -19,9 +19,9 @@ use std::sync::{Arc, Mutex};
 
 use parser::ParseTreeUnfinshed;
 
+use crate::err_lox::ErrorLox;
 use crate::parser::ParseState;
 use crate::token::TokenArcVec;
-use crate::err_lox::ErrorLox;
 
 // TODO: remove collect and return iterator
 fn read_lines(filename: &str) -> Vec<String> {
@@ -37,25 +37,19 @@ pub fn run_file(path: &str) -> Result<(), ErrorLox> {
     let mut line_number = 1;
     let mut parse_tree: ParseTreeUnfinshed = ParseTreeUnfinshed::new();
 
-    for (index, lines) in read_lines(path).iter().enumerate() {
-        // DEBUG: TOKEN
-        println!("Debugging run_file, Line: {}", index + 1);
-        println!("{lines}");
+    for (index, line) in read_lines(path).iter().enumerate() {
+        println!("{:<2}{}", index + 1, line);
 
-        let tokens: TokenArcVec = scanner::scan_tokens(lines, &mut line_number)?;
-        
-        // DEBUG: TOKEN
-        for i in tokens.iter() {
-            println!("Scanned Token: {:?}", i.lock().unwrap());
-        }
-        let res = parser::parse(&tokens, &mut parse_tree, path);
+        let res = parser::parse_from_string(line, &mut line_number, &mut parse_tree, path);
         match res {
             ParseState::Err(e) => {
                 return Err(e);
-            }
-            _ => {}
+            },
+            ParseState::Unfinished => {},
+            ParseState::Finished => {
+                println!("{:?}", parse_tree);
+            },
         }
-        println!("{:?}", parse_tree);
         line_number += 1;
     }
 

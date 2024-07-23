@@ -1,4 +1,4 @@
-use crate::parser::*;
+use crate::parser::{self, *};
 use crate::scanner::{self, *};
 use crate::token::*;
 use colored::*;
@@ -37,4 +37,15 @@ fn delimiter_location() {
             "stdin",
         )
     );
+}
+
+#[test]
+fn parser_match_ast_pattern() {
+    let string = "a = 2";
+    let mut line_number = 1;
+    let mut parse_tree: ParseTreeUnfinshed = ParseTreeUnfinshed::new();
+    let tokens: TokenArcVec = scanner::scan_tokens(string, &mut line_number).unwrap();
+    
+    let res = parser::parse(&tokens, &mut parse_tree, "stdin");
+    println!("{:?}", parse_tree);
 }
