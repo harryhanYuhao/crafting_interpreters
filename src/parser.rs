@@ -57,13 +57,15 @@ impl ParseTreeUnfinshed {
     }
 
     // TODO: How to properly identify the tree is finished parsing
-    // TODO: Proper error handling
-    pub fn get_finished_node(&self, source_file: &str) -> Result<Option<Arc<Mutex<AST_Node>>>, ErrorLox> {
+    pub fn get_finished_node(
+        &self,
+        source_file: &str,
+    ) -> Result<Option<Arc<Mutex<AST_Node>>>, ErrorLox> {
         if self.content.len() > 1 {
             return Err(ErrorLox::from_arc_mutex_ast_node(
                 self[0].clone(),
                 "Internal Error: Parse Tree is unfinished when calling get_finished_node",
-                source_file
+                source_file,
             ));
         }
         if self.content.len() == 1 {
@@ -81,17 +83,22 @@ impl ParseTreeUnfinshed {
         ParseState::Unfinished
     }
 
+    /// check if the tree[index] is in patterns[0],
+    /// tree[index + i] is in patterns[i].
+    ///
+    /// If tree[index] does not belongs to patterns[0], returns no match, if tree[index]
+    /// belongs to patterns[0] but one of the subsequent does not, returns FailAt(i), where i
+    /// is the first failed index.
+    /// if everything matched, return matched.
     pub(crate) fn match_ast_pattern(
         &self,
         index: usize,
-        patterns: Vec<AST_Type>,
+        patterns: &[Vec<AST_Type>],
     ) -> PatternMatchingRes {
-        let pattern_len = patterns.len();
-        if index + pattern_len > self.len() {
-            return PatternMatchingRes::Nomatch;
-        }
         for (i, pattern) in patterns.iter().enumerate() {
-            if AST_Node::get_AST_Type_from_arc(self[index + i].clone()) != pattern.clone() {
+            if i + index > self.len()
+                || !AST_Node::arc_belongs_to_AST_type(self[i + index].clone(), pattern)
+            {
                 if i == 0 {
                     return PatternMatchingRes::Nomatch;
                 } else {
@@ -267,18 +274,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         AST_Type::Expr(ExprType::Normal),
     ));
 
-    // parse assignment
-    error_handle_SubParseState!(parse_ternary_left_assoc(
-        tree,
-        &vec![AST_Type::Identifier],
-        &vec![TokenType::EQUAL],
-        &vec![
-            AST_Type::Expr(ExprType::Paren),
-            AST_Type::Expr(ExprType::Normal),
-            AST_Type::Identifier
-        ],
-        AST_Type::Stmt(StmtType::Assignment),
-    ));
+    error_handle_SubParseState!(parse_assignment(tree, source));
 
     error_handle_SubParseState!(parse_var(
         tree,
@@ -313,6 +309,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         "Expected {stmt} after if",
     ));
 
+    error_handle_SubParseState!(parse_stmt_sep(tree, source));
     error_handle_SubParseState!(parse_stmt_into_compound_stmt(tree));
 
     tree.is_finished()
@@ -410,7 +407,7 @@ fn parse_parenthesis(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseSta
                 ));
             }
             ParseState::Finished => {
-                let res = match slice.get_finished_node(source){
+                let res = match slice.get_finished_node(source) {
                     Ok(ok) => ok,
                     Err(e) => return SubParseState::Err(e),
                 };
@@ -464,7 +461,9 @@ fn parse_braces(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
         // the work begin
         // recursive call;
         let mut slice = tree.slice(start + 1, end);
+        // println!("SLICES: \n{:?}", slice);
         let sup_parse = real_parse(&mut slice, source);
+        // println!("SLICES after parse: \n{:?}", slice);
         match sup_parse {
             ParseState::Err(e) => return SubParseState::Err(e),
             ParseState::Unfinished => {
@@ -475,7 +474,7 @@ fn parse_braces(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
                 ));
             }
             ParseState::Finished => {
-                let res = match slice.get_finished_node(source){
+                let res = match slice.get_finished_node(source) {
                     Ok(ok) => ok,
                     Err(e) => return SubParseState::Err(e),
                 };
@@ -672,6 +671,115 @@ fn parse_stmt_into_compound_stmt(tree: &mut ParseTreeUnfinshed) -> SubParseState
         }
     }
 
+    SubParseState::Finished
+}
+
+/// parse statements like
+/// ```a = 1+2``` (identifier, equal, stmt)
+fn parse_assignment(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
+    let mut i = 0;
+    let mut length = tree.len();
+    let expected = vec![
+        vec![AST_Type::Identifier],
+        vec![AST_Type::Unparsed(TokenType::EQUAL)],
+        vec![
+            AST_Type::Expr(ExprType::Normal),
+            AST_Type::Expr(ExprType::Paren),
+        ],
+        vec![AST_Type::Unparsed(TokenType::STMT_SEP)],
+    ];
+    while i < length {
+        let res = tree.match_ast_pattern(i, &expected);
+
+        match res {
+            PatternMatchingRes::Matched => {
+                {
+                    let mut root = tree[i + 1].lock().unwrap();
+                    root.set_AST_Type(AST_Type::Stmt(StmtType::Assignment));
+                    root.append_child(tree[i].clone());
+                    root.append_child(tree[i + 2].clone());
+                }
+                // remove the first expr,
+                // note the length of the array decreases by one
+                tree.remove(i);
+                // remove the second expr
+                tree.remove(i + 1);
+                tree.remove(i + 1);
+                length -= 3;
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+
+    SubParseState::Finished
+}
+
+fn parse_var_2(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
+    let mut i = 0;
+    let mut length = tree.len();
+    let expected = vec![
+        vec![AST_Type::Unparsed(TokenType::VAR)],
+        vec![AST_Type::Stmt(StmtType::Assignment)],
+    ];
+    while i < length {
+        let res = tree.match_ast_pattern(i, &expected);
+
+        match res {
+            PatternMatchingRes::Nomatch => {}
+            PatternMatchingRes::FailedAt(num) => {
+                return SubParseState::Err(ErrorLox::from_arc_mutex_ast_node(
+                    tree[i + num].clone(),
+                    &format!("Expected {:?}", expected[num]),
+                    source,
+                ))
+            }
+            PatternMatchingRes::Matched => {
+                let node = tree[i + 1].clone();
+                let mut node = node.lock().unwrap();
+                node.set_AST_Type(AST_Type::Stmt(StmtType::Declaration));
+                tree.remove(i);
+                length -= 1;
+            }
+        }
+        i += 1;
+    }
+
+    SubParseState::Finished
+}
+
+fn parse_stmt_sep(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
+    let mut i = 0;
+    let mut length = tree.len();
+
+    while i < length {
+        if AST_Node::get_AST_Type_from_arc(tree[i].clone())
+            == AST_Type::Unparsed(TokenType::STMT_SEP)
+        {
+            if i == 0 {
+                tree.remove(i);
+                length -= 1;
+                continue;
+            }
+            if AST_Node::is_arc_mutex_stmt(tree[i - 1].clone()){
+                tree.remove(i);
+                length -= 1;
+                continue;
+            }
+            if AST_Node::is_arc_mutex_expr(tree[i - 1].clone()){
+                let node = tree[i].clone();
+                let mut node = node.lock().unwrap();
+                node.set_AST_Type(AST_Type::Stmt(StmtType::Normal));
+                node.append_child(tree[i - 1].clone());
+                tree.remove(i - 1);
+                continue;
+            }
+            // if none of them is true: there is an error:
+            // TODO: proper error handling
+            panic!("ERROR at parsing stmt_sep!");
+        }
+        i += 1;
+    }
     SubParseState::Finished
 }
 
