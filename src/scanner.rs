@@ -3,12 +3,16 @@ use crate::token::{self, Token, TokenType};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 
-pub fn scan_tokens(source: &str, line: &mut usize) -> Result<Vec<Arc<Mutex<Token>>>, ErrorLox> {
+pub fn scan_tokens(
+    string: &str,
+    line: &mut usize,
+    source_file: &str,
+) -> Result<Vec<Arc<Mutex<Token>>>, ErrorLox> {
     let mut token_vec: Vec<Arc<Mutex<Token>>> = Vec::new();
     let mut start: usize;
     let mut current: usize = 0;
     let mut column = 1;
-    let source_vec = source.chars().collect::<Vec<char>>();
+    let source_vec = string.chars().collect::<Vec<char>>();
     let num_of_chars = source_vec.len();
 
     while current < num_of_chars {
@@ -17,7 +21,14 @@ pub fn scan_tokens(source: &str, line: &mut usize) -> Result<Vec<Arc<Mutex<Token
         // scan iteration scans the text and return the next token wrapped in some.
         // If the next character does not constitute a token, it returns none
         // It increase the current counter per length of the character corresponds to the token
-        match scan_iteration(&source_vec, start, &mut current, line, &mut column)? {
+        match scan_iteration(
+            &source_vec,
+            start,
+            &mut current,
+            line,
+            &mut column,
+            source_file,
+        )? {
             Some(token) => token_vec.push(Arc::new(Mutex::new(token))),
             None => {}
         }
@@ -44,6 +55,7 @@ pub(crate) fn scan_iteration(
     // char scanned
     line: &mut usize, // line number
     column: &mut usize,
+    source_file: &str,
 ) -> Result<Option<Token>, ErrorLox> {
     // This function is to handle situations like this:
     // We have one character token, =, and two character token, ==
@@ -247,10 +259,15 @@ pub(crate) fn scan_iteration(
         }
         '"' => {
             while source_vec[poke] != '"' {
-                if poke >= source_vec.len() {
-                    panic!("unterminated string!");
-                }
                 poke += 1;
+                if poke >= source_vec.len() {
+                    return Err(ErrorLox::from_filename(
+                        "Unmatched \" !",
+                        *line,
+                        *column,
+                        source_file,
+                    ));
+                }
             }
             poke += 1;
             let tmp = get_string(start + 1, poke - 1, source_vec);
@@ -297,7 +314,7 @@ pub(crate) fn scan_iteration(
         }
 
         // ignore
-        ' '|'\t' => {
+        ' ' | '\t' => {
             *current = poke;
             token = None;
         }

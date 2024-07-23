@@ -8,7 +8,7 @@ fn test_scan_iteration() {
     let mut line = 1;
     let mut column = 1;
     let source = "!=".chars().collect::<Vec<char>>();
-    let token = scan_iteration(&source, 0, &mut current, &mut line, &mut column).unwrap();
+    let token = scan_iteration(&source, 0, &mut current, &mut line, &mut column, "stdin").unwrap();
     assert_eq!(token.as_ref().unwrap().token_type, TokenType::BANG_EQUAL);
     assert_eq!(token.as_ref().unwrap().lexeme, "!=");
     assert_eq!(token.as_ref().unwrap().line, 1);
@@ -18,7 +18,7 @@ fn test_scan_iteration() {
 fn test_scan_tokens() {
     fn test_helper(source: &str) {
         let mut line = 1;
-        let tokens = scan_tokens(source, &mut line).unwrap();
+        let tokens = scan_tokens(source, &mut line, "stdin").unwrap();
         // DEBUG: BY PRINTING
         println!("{}: {}", "source".bright_blue().bold(), source);
         println!("{}", "Tokens:".cyan().bold());

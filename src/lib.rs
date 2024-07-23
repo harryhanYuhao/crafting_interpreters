@@ -44,11 +44,13 @@ pub fn run_file(path: &str) -> Result<(), ErrorLox> {
         match res {
             ParseState::Err(e) => {
                 return Err(e);
-            },
-            ParseState::Unfinished => {},
+            }
+            ParseState::Unfinished => {
+                println!("Unfinished:\n{:?}", parse_tree);
+            }
             ParseState::Finished => {
                 println!("{:?}", parse_tree);
-            },
+            }
         }
         line_number += 1;
     }
@@ -66,7 +68,7 @@ pub fn run_prompt() -> Result<(), Box<dyn Error>> {
         print!("{line} >>> ");
         stdout().flush()?;
         io::stdin().read_line(&mut buffer)?;
-        let tokens = scanner::scan_tokens(&buffer, &mut line).unwrap();
+        let tokens = scanner::scan_tokens(&buffer, &mut line, "stdin").unwrap();
         for i in tokens {
             println!("{:?}", i.lock().unwrap());
         }

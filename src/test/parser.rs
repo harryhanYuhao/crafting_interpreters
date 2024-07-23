@@ -10,8 +10,7 @@ fn plus_minus_paren() {
     println!("{}", "Parser Tree:".cyan().bold());
     let mut line = 0;
     let mut parse_tree: ParseTreeUnfinshed = ParseTreeUnfinshed::new();
-    let tokens: TokenArcVec = scanner::scan_tokens(input, &mut line).unwrap();
-    let res = parse(&tokens, &mut parse_tree, "sdtin");
+    let res = parse_from_string(input, &mut line, &mut parse_tree, "sdtin");
     match res {
         ParseState::Err(e) => {
             panic!("{}: {}", "Error".red().bold(), format!("{:?}", e).bold());
@@ -25,7 +24,7 @@ fn plus_minus_paren() {
 fn delimiter_location() {
     let mut line = 0;
     let input = "{1 - 2}";
-    let tokens: TokenArcVec = scanner::scan_tokens(input, &mut line).unwrap();
+    let tokens: TokenArcVec = scanner::scan_tokens(input, &mut line, "stdin").unwrap();
     let parse_tree = ParseTreeUnfinshed::from(&tokens);
     println!("{:?}", parse_tree);
     println!(
@@ -44,7 +43,7 @@ fn parser_match_ast_pattern() {
     let string = "a = 2";
     let mut line_number = 1;
     let mut parse_tree: ParseTreeUnfinshed = ParseTreeUnfinshed::new();
-    let tokens: TokenArcVec = scanner::scan_tokens(string, &mut line_number).unwrap();
+    let tokens: TokenArcVec = scanner::scan_tokens(string, &mut line_number, "stdin").unwrap();
     
     let res = parser::parse(&tokens, &mut parse_tree, "stdin");
     println!("{:?}", parse_tree);

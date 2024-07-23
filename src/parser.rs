@@ -58,14 +58,18 @@ impl ParseTreeUnfinshed {
 
     // TODO: How to properly identify the tree is finished parsing
     // TODO: Proper error handling
-    pub fn get_finished_node(&self) -> Option<Arc<Mutex<AST_Node>>> {
+    pub fn get_finished_node(&self, source_file: &str) -> Result<Option<Arc<Mutex<AST_Node>>>, ErrorLox> {
         if self.content.len() > 1 {
-            panic!("Internal Error: Tree is in unfinished state!");
+            return Err(ErrorLox::from_arc_mutex_ast_node(
+                self[0].clone(),
+                "Internal Error: Parse Tree is unfinished when calling get_finished_node",
+                source_file
+            ));
         }
         if self.content.len() == 1 {
-            return Some(self.content[0].clone());
+            return Ok(Some(self.content[0].clone()));
         }
-        None
+        Ok(None)
     }
 
     // TODO: How to properly identify the tree is finished parsing
@@ -170,12 +174,12 @@ pub fn parse(tokens: &TokenArcVec, tree: &mut ParseTreeUnfinshed, source: &str) 
 // parse the input strings into tokens, then feed the token into the unfinished parse tree, which
 // is parsed
 pub fn parse_from_string(
-    string: &str,
+    string_input: &str,
     line_number: &mut usize,
     tree: &mut ParseTreeUnfinshed,
     source: &str,
 ) -> ParseState {
-    let tokens: TokenArcVec = match scanner::scan_tokens(string, line_number) {
+    let tokens: TokenArcVec = match scanner::scan_tokens(string_input, line_number, source) {
         Ok(ok) => ok,
         Err(e) => {
             return ParseState::Err(e);
@@ -208,6 +212,14 @@ macro_rules! error_handle_SubParseState {
         }
     };
 }
+
+// BUG:
+// if the input file is like
+// ```
+// true
+// ```
+// The result will be two unparsed nodes.
+// Expected: a single statement that evaluates to the expr
 
 // this is the real parse. Define here for recursion
 fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
@@ -398,7 +410,10 @@ fn parse_parenthesis(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseSta
                 ));
             }
             ParseState::Finished => {
-                let res = slice.get_finished_node();
+                let res = match slice.get_finished_node(source){
+                    Ok(ok) => ok,
+                    Err(e) => return SubParseState::Err(e),
+                };
                 // the parse result may be none
                 match res {
                     // in such case the parenethesis is just by itself
@@ -460,7 +475,10 @@ fn parse_braces(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
                 ));
             }
             ParseState::Finished => {
-                let res = slice.get_finished_node();
+                let res = match slice.get_finished_node(source){
+                    Ok(ok) => ok,
+                    Err(e) => return SubParseState::Err(e),
+                };
                 // the parse result may be none
                 // If there is result, the result is presented by one compound
                 // stmt, which is redundant
