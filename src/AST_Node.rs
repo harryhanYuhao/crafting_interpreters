@@ -19,6 +19,8 @@ pub enum StmtType {
     Assignment,
     Declaration,
     Compound,
+    If,
+    While,
 }
 
 /// Potential fields are for usage during parse when the type may not be identified
@@ -31,10 +33,9 @@ pub(crate) enum AST_Type {
     Stmt(StmtType),
     PotentialStmt,
     Expr(ExprType),
-    PotentialExpr,
-    Copulative,
     Identifier,
     Unknown,
+    Unparsed(TokenType),
 }
 
 impl From<Arc<Mutex<Token>>> for AST_Type {
@@ -43,23 +44,15 @@ impl From<Arc<Mutex<Token>>> for AST_Type {
         match Token::get_token_type_from_arc(s.clone()) {
             TokenType::NUMBER => res = AST_Type::Expr(ExprType::Normal),
             TokenType::IDENTIFIER => res = AST_Type::Identifier,
-            TokenType::PLUS
-            | TokenType::PERCENT
-            | TokenType::MINUS
-            | TokenType::STAR
-            | TokenType::SLASH
-            | TokenType::EQUAL_EQUAL
-            | TokenType::AND
-            | TokenType::OR
-            | TokenType::GREATER
-            | TokenType::LESS
-            | TokenType::LESS_EQUAL => {
-                res = AST_Type::Copulative;
-            }
             TokenType::STMT_SEP => {
                 res = AST_Type::Stmt(StmtType::Normal);
             }
-            _ => res = AST_Type::Unknown,
+            TokenType::TRUE | TokenType::FALSE => {
+                res = AST_Type::Expr(ExprType::Normal);
+            }
+            catch_all => {
+                res = AST_Type::Unparsed(catch_all);
+            }
         }
         res
     }
@@ -89,21 +82,19 @@ impl AST_Node {
 
     pub(crate) fn is_compound_stmt(&self) -> bool {
         match &self.AST_Type {
-            AST_Type::Stmt(inner) => {
-                match inner {
-                    StmtType::Compound => {
-                        return true;
-                    }
-                    _ => {
-                        return false;
-                    }
+            AST_Type::Stmt(inner) => match inner {
+                StmtType::Compound => {
+                    return true;
+                }
+                _ => {
+                    return false;
                 }
             },
             _ => return false,
         }
     }
 
-    pub (crate) fn is_arc_mutex_compound_stmt(input: Arc<Mutex<AST_Node>>) -> bool {
+    pub(crate) fn is_arc_mutex_compound_stmt(input: Arc<Mutex<AST_Node>>) -> bool {
         let node = input.lock().unwrap();
         AST_Node::is_compound_stmt(&node)
     }
@@ -179,10 +170,24 @@ impl AST_Node {
         self.children.push(node.clone());
     }
 
+    fn append_children(&mut self, nodes: &[Arc<Mutex<AST_Node>>]) {
+        for i in nodes {
+            self.children.push(i.clone());
+        }
+    }
+
     pub(crate) fn arc_mutex_append_child(input: Arc<Mutex<AST_Node>>, child: Arc<Mutex<AST_Node>>) {
         let mut input = input.lock().unwrap();
         let input = &mut input;
         input.append_child(child);
+    }
+
+    pub(crate) fn arc_mutex_append_children(
+        input: Arc<Mutex<AST_Node>>,
+        children: &[Arc<Mutex<AST_Node>>],
+    ) {
+        let mut node = input.lock().unwrap();
+        node.append_children(children);
     }
 
     pub fn get_level(&self) -> usize {
@@ -234,6 +239,11 @@ impl AST_Node {
         &self.children
     }
 
+    pub fn arc_mutex_get_children(node: Arc<Mutex<AST_Node>>) -> Vec<Arc<Mutex<AST_Node>>> {
+        let tmp = node.lock().unwrap();
+        (&tmp).get_children().into()
+    }
+
     pub fn random_expr(level: usize) -> Self {
         if level == 0 {
             AST_Node {
@@ -261,28 +271,6 @@ impl AST_Node {
             token: token.into(),
             children: Vec::new(),
         }
-    }
-
-    pub fn new_terminal_node(token: Arc<Mutex<token::Token>>) -> Self {
-        AST_Node {
-            AST_Type: AST_Type::Unknown,
-            token,
-            children: Vec::new(),
-        }
-    }
-
-    pub fn new_binary_tree(
-        root: Arc<Mutex<Token>>,
-        left: Arc<Mutex<Token>>,
-        right: Arc<Mutex<Token>>,
-    ) -> Self {
-        let mut root = AST_Node::from(root);
-        let left = AST_Node::from(left);
-        let right = AST_Node::from(right);
-        root.children.push(left.into());
-        root.children.push(right.into());
-
-        root
     }
 
     pub(crate) fn dummy_node(AST_Type: AST_Type) -> Self {
