@@ -86,20 +86,30 @@ impl ParseTreeUnfinshed {
     /// check if the tree[index] is in patterns[0],
     /// tree[index + i] is in patterns[i].
     ///
-    /// If tree[index] does not belongs to patterns[0], returns no match, if tree[index]
-    /// belongs to patterns[0] but one of the subsequent does not, returns FailAt(i), where i
-    /// is the first failed index.
+    /// If tree[key_stmt_idx + index] does not belongs to patterns[key_stmt_idx], returns no_match,
+    /// if tree[index] belongs to patterns[0] but one of the subsequent does not,
+    /// returns FailAt(i), where i is the failed index.
     /// if everything matched, return matched.
     pub(crate) fn match_ast_pattern(
         &self,
         index: usize,
         patterns: &[Vec<AST_Type>],
+        key_stmt_idx: usize,
     ) -> PatternMatchingRes {
+        if key_stmt_idx + index >= self.len()
+            || !AST_Node::arc_belongs_to_AST_type(
+                self[index + key_stmt_idx].clone(),
+                &patterns[key_stmt_idx],
+            )
+        {
+            return PatternMatchingRes::Nomatch;
+        }
+
         for (i, pattern) in patterns.iter().enumerate() {
-            if i + index > self.len()
+            if i + index >= self.len()
                 || !AST_Node::arc_belongs_to_AST_type(self[i + index].clone(), pattern)
             {
-                if i == 0 {
+                if i == key_stmt_idx {
                     return PatternMatchingRes::Nomatch;
                 } else {
                     return PatternMatchingRes::FailedAt(i);
@@ -269,9 +279,32 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         source
     ));
 
-    error_handle_SubParseState!(parse_assignment(tree, source));
+    // parsing assignment a = 2;
+    error_handle_SubParseState!(parse_assignment_like(
+        tree,
+        vec![AST_Type::Unparsed(TokenType::EQUAL)],
+        AST_Type::Stmt(StmtType::Assignment),
+        source
+    ));
+
+    // parse a += 1
+    error_handle_SubParseState!(parse_assignment_like(
+        tree,
+        vec![AST_Type::Unparsed(TokenType::PLUS_EQUAL)],
+        AST_Type::Stmt(StmtType::PlusEqual),
+        source
+    ));
+
+    // parse a -= 1
+    error_handle_SubParseState!(parse_assignment_like(
+        tree,
+        vec![AST_Type::Unparsed(TokenType::MINUS_EQUAL)],
+        AST_Type::Stmt(StmtType::MinusEqual),
+        source
+    ));
 
     error_handle_SubParseState!(parse_var(tree, source));
+
 
     // parse statements like expr; into stmt(normal) -> expr
     error_handle_SubParseState!(parse_post_single(
@@ -284,9 +317,9 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         AST_Type::Stmt(StmtType::Normal),
     ));
 
-    error_handle_SubParseState!(parse_ternary_token_asttype_asttype(
+    error_handle_SubParseState!(parse_ternary_stmt_like_while(
         tree,
-        &vec![TokenType::WHILE],
+        &vec![AST_Type::Unparsed(TokenType::WHILE)],
         &vec![
             AST_Type::Expr(ExprType::Paren),
             AST_Type::Expr(ExprType::Normal)
@@ -691,13 +724,19 @@ fn parse_stmt_into_compound_stmt(tree: &mut ParseTreeUnfinshed) -> SubParseState
 }
 
 /// parse statements like
-/// ```a = 1+2``` (identifier, equal, stmt)
-fn parse_assignment(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
+/// ```a = 1+2``` (identifier, equal, expr, stmt_sep)
+fn parse_assignment_like(
+    tree: &mut ParseTreeUnfinshed,
+    key_ast_type: Vec<AST_Type>,
+    result_type: AST_Type,
+    source: &str,
+) -> SubParseState {
     let mut i = 0;
     let mut length = tree.len();
     let expected = vec![
         vec![AST_Type::Identifier],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
+        // vec![AST_Type::Unparsed(TokenType::EQUAL)],
+        key_ast_type,
         vec![
             AST_Type::Expr(ExprType::Normal),
             AST_Type::Expr(ExprType::Paren),
@@ -705,13 +744,13 @@ fn parse_assignment(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseStat
         vec![AST_Type::Unparsed(TokenType::STMT_SEP)],
     ];
     while i < length {
-        let res = tree.match_ast_pattern(i, &expected);
+        let res = tree.match_ast_pattern(i, &expected, 1);
 
         match res {
             PatternMatchingRes::Matched => {
                 {
                     let mut root = tree[i + 1].lock().unwrap();
-                    root.set_AST_Type(AST_Type::Stmt(StmtType::Assignment));
+                    root.set_AST_Type(result_type.clone());
                     root.append_child(tree[i].clone());
                     root.append_child(tree[i + 2].clone());
                 }
@@ -722,6 +761,13 @@ fn parse_assignment(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseStat
                 tree.remove(i + 1);
                 tree.remove(i + 1);
                 length -= 3;
+            }
+            PatternMatchingRes::FailedAt(num) => {
+                return SubParseState::Err(ErrorLox::from_arc_mutex_ast_node(
+                    tree[i + num].clone(),
+                    &format!("Expected {:?}", expected[num]),
+                    source,
+                ))
             }
             _ => {}
         }
@@ -739,7 +785,7 @@ fn parse_var(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
         vec![AST_Type::Stmt(StmtType::Assignment)],
     ];
     while i < length {
-        let res = tree.match_ast_pattern(i, &expected);
+        let res = tree.match_ast_pattern(i, &expected, 0);
 
         match res {
             PatternMatchingRes::Nomatch => {}
@@ -806,9 +852,9 @@ fn parse_stmt_sep(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState 
 /// while \n expr {stmt} or while {stmt} or while (by itself)
 /// Err:: expected {stmt} if
 /// while expr or while expr stmt
-fn parse_ternary_token_asttype_asttype(
+fn parse_ternary_stmt_like_while(
     tree: &mut ParseTreeUnfinshed,
-    operator_token_types: &[TokenType],
+    operator_token_types: &[AST_Type],
     left_ast_types: &[AST_Type],
     right_ast_types: &[AST_Type],
     result_type: AST_Type,
@@ -821,7 +867,7 @@ fn parse_ternary_token_asttype_asttype(
     // ignore the last two tokens
     while i + 2 < length {
         // match the type of the first token
-        if !AST_Node::arc_belongs_to_Token_type(tree[i].clone(), operator_token_types) {
+        if !AST_Node::arc_belongs_to_AST_type(tree[i].clone(), operator_token_types) {
             i += 1;
             continue;
         }

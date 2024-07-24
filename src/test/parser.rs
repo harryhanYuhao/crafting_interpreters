@@ -1,7 +1,7 @@
 use crate::parser::{self, *};
 use crate::scanner::{self, *};
 use crate::token::*;
-use crate::AST_Node::{self, ExprType};
+use crate::AST_Node::{self, ExprType, AST_Type};
 use colored::*;
 
 #[test]
@@ -31,8 +31,8 @@ fn delimiter_location() {
     println!(
         "{:?}",
         get_delimiter_location(
-            TokenType::LEFT_PAREN,
-            TokenType::RIGHT_PAREN,
+            AST_Type::Unparsed(TokenType::LEFT_PAREN),
+            AST_Type::Unparsed(TokenType::RIGHT_PAREN),
             &parse_tree,
             "stdin",
         )
@@ -41,7 +41,7 @@ fn delimiter_location() {
 
 #[test]
 fn parser_match_ast_pattern() {
-    let string = "a = 2";
+    let string = "a = 2;";
     let mut line_number = 1;
     let mut parse_tree: ParseTreeUnfinshed = ParseTreeUnfinshed::new();
     let tokens: TokenArcVec = scanner::scan_tokens(string, &mut line_number, "stdin").unwrap();
@@ -55,35 +55,39 @@ fn parser_match_ast_pattern() {
                 AST_Node::AST_Type::Expr(ExprType::Paren),
                 AST_Node::AST_Type::Expr(ExprType::Normal),
             ],
+            vec![AST_Node::AST_Type::Unparsed(TokenType::STMT_SEP)],
         ],
+        1
     );
     assert_eq!(res, PatternMatchingRes::Matched);
 
     let res = tree.match_ast_pattern(
         0,
         &vec![
-            vec![AST_Node::AST_Type::Identifier],
-            vec![AST_Node::AST_Type::Identifier],
+            vec![AST_Node::AST_Type::Unknown],
             vec![AST_Node::AST_Type::Unparsed(TokenType::EQUAL)],
             vec![
                 AST_Node::AST_Type::Expr(ExprType::Paren),
                 AST_Node::AST_Type::Expr(ExprType::Normal),
             ],
+            vec![AST_Node::AST_Type::Unparsed(TokenType::STMT_SEP)],
         ],
+        1
     );
-    assert_eq!(res, PatternMatchingRes::FailedAt(1));
+    assert_eq!(res, PatternMatchingRes::FailedAt(0));
 
     let res = tree.match_ast_pattern(
         0,
         &vec![
-            vec![AST_Node::AST_Type::Unparsed(TokenType::EQUAL)],
             vec![AST_Node::AST_Type::Identifier],
-            vec![AST_Node::AST_Type::Identifier],
+            vec![AST_Node::AST_Type::Unparsed(TokenType::EOF)],
             vec![
                 AST_Node::AST_Type::Expr(ExprType::Paren),
                 AST_Node::AST_Type::Expr(ExprType::Normal),
             ],
+            vec![AST_Node::AST_Type::Unparsed(TokenType::STMT_SEP)],
         ],
+        1
     );
     assert_eq!(res, PatternMatchingRes::Nomatch);
 
@@ -91,29 +95,14 @@ fn parser_match_ast_pattern() {
         0,
         &vec![
             vec![AST_Node::AST_Type::Identifier],
-            vec![AST_Node::AST_Type::Identifier],
+            vec![AST_Node::AST_Type::Unparsed(TokenType::EQUAL)],
             vec![
                 AST_Node::AST_Type::Expr(ExprType::Paren),
                 AST_Node::AST_Type::Expr(ExprType::Normal),
             ],
-            vec![AST_Node::AST_Type::Identifier],
-            vec![AST_Node::AST_Type::Identifier],
+            vec![AST_Node::AST_Type::Unparsed(TokenType::EOF)],
         ],
+        1
     );
-    assert_eq!(res, PatternMatchingRes::FailedAt(1));
-
-    let res = tree.match_ast_pattern(
-        10,
-        &vec![
-            vec![AST_Node::AST_Type::Identifier],
-            vec![AST_Node::AST_Type::Identifier],
-            vec![
-                AST_Node::AST_Type::Expr(ExprType::Paren),
-                AST_Node::AST_Type::Expr(ExprType::Normal),
-            ],
-            vec![AST_Node::AST_Type::Identifier],
-            vec![AST_Node::AST_Type::Identifier],
-        ],
-    );
-    assert_eq!(res, PatternMatchingRes::Nomatch);
+    assert_eq!(res, PatternMatchingRes::FailedAt(3));
 }

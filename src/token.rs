@@ -210,6 +210,7 @@ impl fmt::Debug for Token {
     }
 }
 
+
 impl Token {
     pub fn new(token_type: TokenType, lexeme: String, line: usize, column: usize) -> Token {
         Token {

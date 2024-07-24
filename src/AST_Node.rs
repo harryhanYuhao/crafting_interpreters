@@ -21,6 +21,8 @@ pub enum StmtType {
     Compound,
     If,
     While,
+    PlusEqual,
+    MinusEqual,
 }
 
 /// Potential fields are for usage during parse when the type may not be identified
