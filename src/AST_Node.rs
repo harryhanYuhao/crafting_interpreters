@@ -23,6 +23,8 @@ pub enum StmtType {
     While,
     PlusEqual,
     MinusEqual,
+    StarEqual,
+    SlashEqual,
 }
 
 /// Potential fields are for usage during parse when the type may not be identified

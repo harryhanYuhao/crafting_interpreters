@@ -303,6 +303,22 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         source
     ));
 
+    // a *=1
+    error_handle_SubParseState!(parse_assignment_like(
+        tree,
+        vec![AST_Type::Unparsed(TokenType::STAR_EQUAL)],
+        AST_Type::Stmt(StmtType::StarEqual),
+        source
+    ));
+
+    // a /= 1
+    error_handle_SubParseState!(parse_assignment_like(
+        tree,
+        vec![AST_Type::Unparsed(TokenType::SLASH_EQUAL)],
+        AST_Type::Stmt(StmtType::SlashEqual),
+        source
+    ));
+
     error_handle_SubParseState!(parse_var(tree, source));
 
 

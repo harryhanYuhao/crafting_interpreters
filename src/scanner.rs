@@ -33,6 +33,7 @@ pub fn scan_tokens(
             None => {}
         }
     }
+    // EOF also counts as STMT_SEP
     token_vec.push(Token::new(TokenType::STMT_SEP, String::from("\\xa"), *line, column).into());
     Ok(token_vec)
 }
@@ -176,12 +177,15 @@ pub(crate) fn scan_iteration(
             ))
         }
         '*' => {
-            token = Some(Token::new(
+            token = two_character_check(
+                &mut poke,
+                '='.into(),
                 TokenType::STAR,
-                String::from(source_vec[start]),
+                TokenType::STAR_EQUAL,
                 *line,
                 *column,
-            ))
+                &source_vec,
+            );
         }
         '%' => {
             token = Some(Token::new(
@@ -335,13 +339,18 @@ pub(crate) fn scan_iteration(
                     poke += 1;
                 }
                 *current = poke;
+                token = None;
+            } else {
+                token = two_character_check(
+                    &mut poke,
+                    '='.into(),
+                    TokenType::SLASH,
+                    TokenType::SLASH_EQUAL,
+                    *line,
+                    *column,
+                    &source_vec,
+                );
             }
-            token = Some(Token::new(
-                TokenType::SLASH,
-                String::from(source_vec[start]),
-                *line,
-                *column,
-            ))
         }
         _ => {
             return Err(ErrorLox::from_filename(
