@@ -296,8 +296,8 @@ pub(crate) fn scan_iteration(
         | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z' | 'A' | 'B' | 'C'
         | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q'
         | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' => {
-            while (source_vec[poke].is_alphanumeric() || source_vec[poke] == '_')
-                && poke < source_vec.len()
+            while poke < source_vec.len()
+                && (source_vec[poke].is_alphanumeric() || source_vec[poke] == '_')
             {
                 poke += 1;
             }
@@ -331,7 +331,7 @@ pub(crate) fn scan_iteration(
         }
         '/' => {
             if source_vec[poke] == '/' {
-                while source_vec[poke] != '\n' && poke < source_vec.len() {
+                while poke < source_vec.len() && source_vec[poke] != '\n' {
                     poke += 1;
                 }
                 *current = poke;
@@ -343,7 +343,6 @@ pub(crate) fn scan_iteration(
                 *column,
             ))
         }
-        //TODO: ERROR HANDLING
         _ => {
             return Err(ErrorLox::from_filename(
                 &format!("'{}' is an invalid token", source_vec[start]),

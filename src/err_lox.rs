@@ -89,8 +89,9 @@ impl ErrorLox {
 
     pub fn panic(&self) {
         println!("{}", self);
+        std::process::exit(1);
     }
-    
+
     pub fn set_error_type(&mut self, error_type: ErrorType) {
         self.error_type = error_type;
     }

@@ -173,6 +173,7 @@ impl fmt::Debug for ParseTreeUnfinshed {
 /// tokens: more tokens to be parsed, which will be appended to the end of the tree
 pub fn parse(tokens: &TokenArcVec, tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
     let input_list = ParseTreeUnfinshed::from(tokens);
+    println!("Input List:\n{:?}\n", input_list);
     tree.extend(input_list);
 
     real_parse(tree, source)
@@ -220,14 +221,6 @@ macro_rules! error_handle_SubParseState {
     };
 }
 
-// BUG:
-// if the input file is like
-// ```
-// true
-// ```
-// The result will be two unparsed nodes.
-// Expected: a single statement that evaluates to the expr
-
 // this is the real parse. Define here for recursion
 fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
     if tree.len() <= 1 {
@@ -254,6 +247,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
             AST_Type::Identifier
         ],
         AST_Type::Expr(ExprType::Normal),
+        source
     ));
     // parse plus minus
     error_handle_SubParseState!(parse_ternary_left_assoc(
@@ -272,17 +266,12 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
             AST_Type::Identifier
         ],
         AST_Type::Expr(ExprType::Normal),
+        source
     ));
 
     error_handle_SubParseState!(parse_assignment(tree, source));
 
-    error_handle_SubParseState!(parse_var(
-        tree,
-        &vec![TokenType::VAR],
-        &vec![AST_Type::Stmt(StmtType::Assignment)],
-        AST_Type::Stmt(StmtType::Declaration),
-        source,
-    ));
+    error_handle_SubParseState!(parse_var(tree, source));
 
     // parse statements like expr; into stmt(normal) -> expr
     error_handle_SubParseState!(parse_post_single(
@@ -332,8 +321,8 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
 /// tree = 1 + (1 + 2) + (3+ (2+3)), left = (, right = )
 /// return [(2, 6), (8, 16)]
 pub(crate) fn get_delimiter_location(
-    left: TokenType,
-    right: TokenType,
+    left: AST_Type,
+    right: AST_Type,
     tree: &ParseTreeUnfinshed,
     source: &str,
 ) -> Result<Vec<(usize, usize)>, ErrorLox> {
@@ -342,7 +331,7 @@ pub(crate) fn get_delimiter_location(
     let mut count = 0;
     let left = left.clone();
     for i in 0..tree.len() {
-        match AST_Node::get_token_type_from_arc(tree[i].clone()) {
+        match AST_Node::get_AST_Type_from_arc(tree[i].clone()) {
             y if y == left => {
                 if count == 0 {
                     start = i;
@@ -370,10 +359,13 @@ pub(crate) fn get_delimiter_location(
     if count > 0 {
         let mut e = ErrorLox::from_arc_mutex_ast_node(
             tree[tree.len() - 1].clone(),
-            "Unpaired left delimiter",
+            &format!("Unpaired {:?}", left),
             source,
         );
         e.set_error_type(ErrorType::UnterminatedDelimiter);
+
+        // println!("{e:?}");
+
         return Err(e);
     }
 
@@ -383,18 +375,18 @@ pub(crate) fn get_delimiter_location(
 // recursively parse parenthesis
 fn parse_parenthesis(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
     let locations = match get_delimiter_location(
-        TokenType::LEFT_PAREN,
-        TokenType::RIGHT_PAREN,
+        AST_Type::Unparsed(TokenType::LEFT_PAREN),
+        AST_Type::Unparsed(TokenType::RIGHT_PAREN),
         &tree,
         source,
     ) {
         Ok(ok) => ok,
+        // left and right paren must be at the same line
         Err(e) => return SubParseState::Err(e),
     };
 
+    // recursive call;
     for (start, end) in locations.into_iter().rev() {
-        // the work begin
-        // recursive call;
         let mut slice = tree.slice(start + 1, end);
         let sup_parse = real_parse(&mut slice, source);
         match sup_parse {
@@ -441,25 +433,30 @@ fn parse_parenthesis(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseSta
 
 fn parse_braces(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
     let locations = match get_delimiter_location(
-        TokenType::LEFT_BRACE,
-        TokenType::RIGHT_BRACE,
+        AST_Type::Unparsed(TokenType::LEFT_BRACE),
+        AST_Type::Unparsed(TokenType::RIGHT_BRACE),
         &tree,
         source,
     ) {
-        Ok(ok) => ok,
-        Err(e) => match e.get_error_type() {
-            ErrorType::UnterminatedDelimiter => {
-                return SubParseState::Unfinished;
+        Ok(ok) => {
+            // println!("{ok:?}");
+            ok
+        }
+        Err(e) => {
+            // println!("{e:?}");
+            match e.get_error_type() {
+                ErrorType::UnterminatedDelimiter => {
+                    return SubParseState::Unfinished;
+                }
+                _ => {
+                    return SubParseState::Err(e);
+                }
             }
-            _ => {
-                return SubParseState::Err(e);
-            }
-        },
+        }
     };
 
+    // recursive call;
     for (start, end) in locations.into_iter().rev() {
-        // the work begin
-        // recursive call;
         let mut slice = tree.slice(start + 1, end);
         // println!("SLICES: \n{:?}", slice);
         let sup_parse = real_parse(&mut slice, source);
@@ -510,40 +507,59 @@ fn parse_braces(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
     }
     SubParseState::Finished
 }
+
 /// This function constructs the ternary left associtive operators into tree, whose grammer is
 /// similar to +, -, *, /
-/// It will set the resulting AST_Type as expr(normal)
-/// TODO:
-/// It shall return error of the operator starts in the beginning of the line or at the end of the
-/// line. But recall we are parsing the whole assembled tree
+///
+/// If the operator is found, but left_ast_types or right_ast_types are not found,  
 fn parse_ternary_left_assoc(
     tree: &mut ParseTreeUnfinshed,
     left_ast_types: &[AST_Type],
     operator_token_types: &[TokenType],
     right_ast_types: &[AST_Type],
     result_type: AST_Type,
+    source: &str,
 ) -> SubParseState {
     // if the operator appears at the beginning or at the end, return error.
+    if AST_Node::arc_belongs_to_Token_type(tree[0].clone(), operator_token_types) {
+        return SubParseState::Err(ErrorLox::from_arc_mutex_ast_node(
+            tree[0].clone(),
+            &format!("{:?} found in the beginning", operator_token_types),
+            source,
+        ));
+    }
+    if AST_Node::arc_belongs_to_Token_type(tree[tree.len() - 1].clone(), operator_token_types) {
+        return SubParseState::Err(ErrorLox::from_arc_mutex_ast_node(
+            tree[tree.len() - 1].clone(),
+            &format!("{:?} found in the end", operator_token_types),
+            source,
+        ));
+    }
+
+    // Start of parsing
 
     let mut length = tree.len();
     let mut i = 0;
 
     // ignore the last two tokens
     while i + 2 < length {
+        if !AST_Node::arc_belongs_to_Token_type(tree[i + 1].clone(), operator_token_types) {
+            i += 1;
+            continue;
+        }
         // match the type of the first token
         if !AST_Node::arc_belongs_to_AST_type(tree[i].clone(), left_ast_types) {
             i += 1;
             continue;
         }
-        // check the second token
-        if !AST_Node::arc_belongs_to_Token_type(tree[i + 1].clone(), operator_token_types) {
-            i += 1;
-            continue;
-        }
-
         // check the third toklen
         if !AST_Node::arc_belongs_to_AST_type(tree[i + 2].clone(), right_ast_types) {
-            return SubParseState::Unfinished;
+            let e = ErrorLox::from_arc_mutex_ast_node(
+                tree[i + 2].clone(),
+                &format!("expected {:?}", right_ast_types),
+                source,
+            );
+            return SubParseState::Err(e);
         }
         // Construct the tree
         {
@@ -594,38 +610,38 @@ fn parse_post_single(
 }
 
 /// parse var ast_assignment into tree
-fn parse_var(
-    tree: &mut ParseTreeUnfinshed,
-    operator_token_type: &[TokenType],
-    ast_type: &[AST_Type],
-    result_type: AST_Type,
-    source: &str,
-) -> SubParseState {
-    let mut length = tree.len();
-    let mut i = 0;
-
-    while i + 1 < length {
-        if !AST_Node::arc_belongs_to_Token_type(tree[i].clone(), operator_token_type) {
-            i += 1;
-            continue;
-        }
-        if !AST_Node::arc_belongs_to_AST_type(tree[i + 1].clone(), ast_type) {
-            return SubParseState::Err(ErrorLox::from_arc_mutex_ast_node(
-                tree[i + 1].clone(),
-                "Expected Assignment Stmt",
-                source,
-            ));
-        }
-
-        let node = tree[i + 1].clone();
-        let mut node = node.lock().unwrap();
-        node.set_AST_Type(result_type.clone());
-        tree.remove(i);
-        length -= 1;
-        i += 1;
-    }
-    SubParseState::Finished
-}
+// fn parse_var_old(
+//     tree: &mut ParseTreeUnfinshed,
+//     operator_token_type: &[TokenType],
+//     ast_type: &[AST_Type],
+//     result_type: AST_Type,
+//     source: &str,
+// ) -> SubParseState {
+//     let mut length = tree.len();
+//     let mut i = 0;
+//
+//     while i + 1 < length {
+//         if !AST_Node::arc_belongs_to_Token_type(tree[i].clone(), operator_token_type) {
+//             i += 1;
+//             continue;
+//         }
+//         if !AST_Node::arc_belongs_to_AST_type(tree[i + 1].clone(), ast_type) {
+//             return SubParseState::Err(ErrorLox::from_arc_mutex_ast_node(
+//                 tree[i + 1].clone(),
+//                 "Expected Assignment Stmt",
+//                 source,
+//             ));
+//         }
+//
+//         let node = tree[i + 1].clone();
+//         let mut node = node.lock().unwrap();
+//         node.set_AST_Type(result_type.clone());
+//         tree.remove(i);
+//         length -= 1;
+//         i += 1;
+//     }
+//     SubParseState::Finished
+// }
 
 /// The final, finished parse tree shall consist of a single root of type Stmt(Compound). All of
 /// the substatment shall be children of this node.
@@ -715,7 +731,7 @@ fn parse_assignment(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseStat
     SubParseState::Finished
 }
 
-fn parse_var_2(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
+fn parse_var(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
     let mut i = 0;
     let mut length = tree.len();
     let expected = vec![
@@ -761,22 +777,23 @@ fn parse_stmt_sep(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState 
                 length -= 1;
                 continue;
             }
-            if AST_Node::is_arc_mutex_stmt(tree[i - 1].clone()){
+            if AST_Node::is_arc_mutex_stmt(tree[i - 1].clone()) {
                 tree.remove(i);
                 length -= 1;
                 continue;
             }
-            if AST_Node::is_arc_mutex_expr(tree[i - 1].clone()){
-                let node = tree[i].clone();
-                let mut node = node.lock().unwrap();
-                node.set_AST_Type(AST_Type::Stmt(StmtType::Normal));
-                node.append_child(tree[i - 1].clone());
-                tree.remove(i - 1);
-                continue;
-            }
-            // if none of them is true: there is an error:
-            // TODO: proper error handling
-            panic!("ERROR at parsing stmt_sep!");
+            // TODO: IS THIS HANDLING WHAT WE EXPECTED?
+            let node = tree[i].clone();
+            let mut node = node.lock().unwrap();
+            node.set_AST_Type(AST_Type::Stmt(StmtType::Normal));
+            node.append_child(tree[i - 1].clone());
+            tree.remove(i - 1);
+            continue;
+            // return SubParseState::Err(ErrorLox::from_arc_mutex_ast_node(
+            //     tree[i - 1].clone(),
+            //     "Unexpected Node, likely an internal error.",
+            //     source,
+            // ));
         }
         i += 1;
     }
