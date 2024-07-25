@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex};
 pub enum ExprType {
     Normal,
     Paren,
+    Negated,
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -40,6 +41,32 @@ pub(crate) enum AST_Type {
     Identifier,
     Unknown,
     Unparsed(TokenType),
+}
+
+impl AST_Type {
+    pub(crate) fn get_all_expr() -> Vec<Self> {
+        vec![
+            AST_Type::Expr(ExprType::Normal),
+            AST_Type::Expr(ExprType::Paren),
+            AST_Type::Expr(ExprType::Negated),
+        ]
+    }
+
+    pub(crate) fn get_all_stmt() -> Vec<Self> {
+        vec![
+            AST_Type::Stmt(StmtType::Normal),
+            AST_Type::Stmt(StmtType::Braced),
+            AST_Type::Stmt(StmtType::Assignment),
+            AST_Type::Stmt(StmtType::Declaration),
+            AST_Type::Stmt(StmtType::Compound),
+            AST_Type::Stmt(StmtType::If),
+            AST_Type::Stmt(StmtType::While),
+            AST_Type::Stmt(StmtType::PlusEqual),
+            AST_Type::Stmt(StmtType::MinusEqual),
+            AST_Type::Stmt(StmtType::StarEqual),
+            AST_Type::Stmt(StmtType::SlashEqual),
+        ]
+    }
 }
 
 impl From<Arc<Mutex<Token>>> for AST_Type {

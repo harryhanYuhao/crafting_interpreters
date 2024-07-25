@@ -1,5 +1,6 @@
 var i = 0
 while (i +  10) {
+	var b = 1
 	i = 100
 }
 

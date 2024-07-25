@@ -12,6 +12,29 @@ use std::iter::{Enumerate, FromIterator};
 use std::ops::{Index, IndexMut, Sub};
 use std::sync::{Arc, Mutex};
 
+lazy_static! {
+    static ref RVALUES: Vec<AST_Type> =
+        [AST_Type::get_all_expr(), vec![AST_Type::Identifier]].concat();
+
+    static ref COPULATIVE: Vec<AST_Type> = Vec::from([
+        AST_Type::Unparsed(TokenType::PLUS),
+        AST_Type::Unparsed(TokenType::PLUS_EQUAL),
+        AST_Type::Unparsed(TokenType::MINUS),
+        AST_Type::Unparsed(TokenType::MINUS_EQUAL),
+        AST_Type::Unparsed(TokenType::STAR),
+        AST_Type::Unparsed(TokenType::STAR_EQUAL),
+        AST_Type::Unparsed(TokenType::SLASH),
+        AST_Type::Unparsed(TokenType::SLASH_EQUAL),
+        AST_Type::Unparsed(TokenType::EQUAL),
+        AST_Type::Unparsed(TokenType::EQUAL_EQUAL),
+        AST_Type::Unparsed(TokenType::BANG_EQUAL),
+        AST_Type::Unparsed(TokenType::GREATER),
+        AST_Type::Unparsed(TokenType::GREATER_EQUAL),
+        AST_Type::Unparsed(TokenType::LESS),
+        AST_Type::Unparsed(TokenType::LESS_EQUAL),
+    ]);
+}
+
 // TODO: maybe it is unnecessary to have a separate struct for unfinished tree. Remove this struct.
 pub struct ParseTreeUnfinshed {
     content: Vec<Arc<Mutex<AST_Node>>>,
@@ -240,45 +263,72 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
     error_handle_SubParseState!(parse_parenthesis(tree, source));
     error_handle_SubParseState!(parse_braces(tree, source));
 
+    error_handle_SubParseState!(parse_prefix(
+        tree,
+        vec![AST_Type::Unparsed(TokenType::MINUS)],
+        vec![
+            AST_Type::Expr(ExprType::Normal),
+            AST_Type::Expr(ExprType::Paren),
+            AST_Type::Identifier,
+        ],
+        [
+            AST_Type::get_all_stmt(),
+            vec![AST_Type::Unparsed(TokenType::STMT_SEP),],
+            COPULATIVE.clone()
+        ]
+        .concat(),
+        AST_Type::Expr(ExprType::Negated),
+        source
+    ));
+
+    let plus_minus_ternery_valid_types =
+        [AST_Type::get_all_expr(), vec![AST_Type::Identifier]].concat();
+
     // parse times, divide, and modular
     error_handle_SubParseState!(parse_ternary_left_assoc(
         tree,
-        &vec![
-            AST_Type::Expr(ExprType::Paren),
-            AST_Type::Expr(ExprType::Normal),
-            AST_Type::PotentialStmt,
-            AST_Type::Identifier
-        ],
+        &RVALUES,
         &vec![TokenType::STAR, TokenType::SLASH, TokenType::PERCENT],
-        &vec![
-            AST_Type::Expr(ExprType::Paren),
-            AST_Type::Expr(ExprType::Normal),
-            AST_Type::PotentialStmt,
-            AST_Type::Identifier
-        ],
+        &plus_minus_ternery_valid_types,
         AST_Type::Expr(ExprType::Normal),
         source
     ));
     // parse plus minus
     error_handle_SubParseState!(parse_ternary_left_assoc(
         tree,
-        &vec![
-            AST_Type::Expr(ExprType::Paren),
-            AST_Type::Expr(ExprType::Normal),
-            AST_Type::PotentialStmt,
-            AST_Type::Identifier
-        ],
+        &plus_minus_ternery_valid_types,
         &vec![TokenType::PLUS, TokenType::MINUS],
-        &vec![
-            AST_Type::Expr(ExprType::Paren),
-            AST_Type::Expr(ExprType::Normal),
-            AST_Type::PotentialStmt,
-            AST_Type::Identifier
-        ],
+        &plus_minus_ternery_valid_types,
         AST_Type::Expr(ExprType::Normal),
         source
     ));
 
+    // parse >=, <=, >, <
+    error_handle_SubParseState!(parse_ternary_left_assoc(
+        tree,
+        &plus_minus_ternery_valid_types,
+        &vec![
+            TokenType::GREATER,
+            TokenType::GREATER_EQUAL,
+            TokenType::LESS,
+            TokenType::LESS_EQUAL
+        ],
+        &plus_minus_ternery_valid_types,
+        AST_Type::Expr(ExprType::Normal),
+        source
+    ));
+
+    //parse ==, !=
+    error_handle_SubParseState!(parse_ternary_left_assoc(
+        tree,
+        &plus_minus_ternery_valid_types,
+        &vec![TokenType::EQUAL_EQUAL, TokenType::BANG_EQUAL],
+        &plus_minus_ternery_valid_types,
+        AST_Type::Expr(ExprType::Normal),
+        source
+    ));
+
+    // println!("Before ASSIGNMENT:\n{tree:?}\nEND");
     // parsing assignment a = 2;
     error_handle_SubParseState!(parse_assignment_like(
         tree,
@@ -319,8 +369,19 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         source
     ));
 
-    error_handle_SubParseState!(parse_var(tree, source));
-
+    // parse var a = b;
+    error_handle_SubParseState!(parse_prefix(
+        tree,
+        vec![AST_Type::Unparsed(TokenType::VAR)],
+        vec![AST_Type::Stmt(StmtType::Assignment)],
+        [
+            AST_Type::get_all_stmt(),
+            vec![AST_Type::Unparsed(TokenType::STMT_SEP)]
+        ]
+        .concat(),
+        AST_Type::Stmt(StmtType::Declaration),
+        source
+    ));
 
     // parse statements like expr; into stmt(normal) -> expr
     error_handle_SubParseState!(parse_post_single(
@@ -488,11 +549,11 @@ fn parse_braces(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
         source,
     ) {
         Ok(ok) => {
-            // println!("{ok:?}");
+            println!("{ok:?}");
             ok
         }
         Err(e) => {
-            // println!("{e:?}");
+            println!("error: {e:?}");
             match e.get_error_type() {
                 ErrorType::UnterminatedDelimiter => {
                     return SubParseState::Unfinished;
@@ -507,9 +568,10 @@ fn parse_braces(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
     // recursive call;
     for (start, end) in locations.into_iter().rev() {
         let mut slice = tree.slice(start + 1, end);
-        // println!("SLICES: \n{:?}", slice);
+        println!("SLICES: \n{:?}\nEND", slice);
+
         let sup_parse = real_parse(&mut slice, source);
-        // println!("SLICES after parse: \n{:?}", slice);
+        println!("SLICES after parse: \n{:?}\nEND", slice);
         match sup_parse {
             ParseState::Err(e) => return SubParseState::Err(e),
             ParseState::Unfinished => {
@@ -556,6 +618,8 @@ fn parse_braces(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
     }
     SubParseState::Finished
 }
+
+// TODO: REFACTOR WITH AST_MATCH
 
 /// This function constructs the ternary left associtive operators into tree, whose grammer is
 /// similar to +, -, *, /
@@ -753,12 +817,10 @@ fn parse_assignment_like(
         vec![AST_Type::Identifier],
         // vec![AST_Type::Unparsed(TokenType::EQUAL)],
         key_ast_type,
-        vec![
-            AST_Type::Expr(ExprType::Normal),
-            AST_Type::Expr(ExprType::Paren),
-        ],
+        RVALUES.clone(),
         vec![AST_Type::Unparsed(TokenType::STMT_SEP)],
     ];
+    // println!("Assignment like: \n{:?}", tree);
     while i < length {
         let res = tree.match_ast_pattern(i, &expected, 1);
 
@@ -793,14 +855,26 @@ fn parse_assignment_like(
     SubParseState::Finished
 }
 
-fn parse_var(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
+fn parse_prefix(
+    tree: &mut ParseTreeUnfinshed,
+    prefix_types: Vec<AST_Type>,
+    sequential_type: Vec<AST_Type>,
+    valid_after_ast_type: Vec<AST_Type>,
+    result_type: AST_Type,
+    source: &str,
+) -> SubParseState {
     let mut i = 0;
     let mut length = tree.len();
-    let expected = vec![
-        vec![AST_Type::Unparsed(TokenType::VAR)],
-        vec![AST_Type::Stmt(StmtType::Assignment)],
-    ];
+    let expected = vec![prefix_types, sequential_type];
+
     while i < length {
+        // Only parse if it is prefix
+        if i > 0 {
+            if !AST_Node::arc_belongs_to_AST_type(tree[i - 1].clone(), &valid_after_ast_type) {
+                i += 1;
+                continue;
+            }
+        }
         let res = tree.match_ast_pattern(i, &expected, 0);
 
         match res {
@@ -815,7 +889,7 @@ fn parse_var(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
             PatternMatchingRes::Matched => {
                 let node = tree[i + 1].clone();
                 let mut node = node.lock().unwrap();
-                node.set_AST_Type(AST_Type::Stmt(StmtType::Declaration));
+                node.set_AST_Type(result_type.clone());
                 tree.remove(i);
                 length -= 1;
             }
@@ -850,6 +924,7 @@ fn parse_stmt_sep(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState 
             node.set_AST_Type(AST_Type::Stmt(StmtType::Normal));
             node.append_child(tree[i - 1].clone());
             tree.remove(i - 1);
+            length -= 1;
             continue;
             // return SubParseState::Err(ErrorLox::from_arc_mutex_ast_node(
             //     tree[i - 1].clone(),
