@@ -41,6 +41,7 @@ pub(crate) enum AST_Type {
     Identifier,
     Unknown,
     Unparsed(TokenType),
+    Tuple
 }
 
 impl AST_Type {

@@ -15,7 +15,6 @@ use std::sync::{Arc, Mutex};
 lazy_static! {
     static ref RVALUES: Vec<AST_Type> =
         [AST_Type::get_all_expr(), vec![AST_Type::Identifier]].concat();
-
     static ref COPULATIVE: Vec<AST_Type> = Vec::from([
         AST_Type::Unparsed(TokenType::PLUS),
         AST_Type::Unparsed(TokenType::PLUS_EQUAL),
@@ -408,6 +407,12 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         "Expected {stmt} after if",
     ));
 
+    error_handle_SubParseState!(parse_comma(
+        tree,
+        &RVALUES,
+        AST_Type::Tuple,
+        source
+    ));
     error_handle_SubParseState!(parse_stmt_sep(tree, source));
     error_handle_SubParseState!(parse_stmt_into_compound_stmt(tree));
 
@@ -990,5 +995,80 @@ fn parse_ternary_stmt_like_while(
         tree.remove(i + 1);
         length -= 2;
     }
+    SubParseState::Finished
+}
+
+fn parse_comma(
+    tree: &mut ParseTreeUnfinshed,
+    expected_types: &[AST_Type],
+    result_type: AST_Type,
+    source: &str,
+) -> SubParseState {
+    let mut i = 0;
+    let mut length = tree.len();
+
+    while i < length {
+        if AST_Node::get_AST_Type_from_arc(tree[i].clone()) != AST_Type::Unparsed(TokenType::COMMA)
+        {
+            i += 1;
+            continue;
+        }
+
+        // now tree[i] is comma
+        let mut comma_count = 0;
+
+        while AST_Node::get_AST_Type_from_arc(tree[i + comma_count * 2].clone())
+            == AST_Type::Unparsed(TokenType::COMMA)
+        {
+            comma_count += 1;
+            if i + (comma_count - 1) * 2 == 0
+                || !AST_Node::arc_belongs_to_AST_type(
+                    tree[i + (comma_count - 1) * 2 - 1].clone(),
+                    expected_types,
+                )
+            {
+                let error_idx = match i + (comma_count - 1) * 2 {
+                    tmp if tmp == 0 => 0,
+                    tmp => tmp - 1,
+                };
+                return SubParseState::Err(ErrorLox::from_arc_mutex_ast_node(
+                    tree[error_idx].clone(),
+                    &format!("Expected {expected_types:?}"),
+                    source,
+                ));
+            }
+            if i + (comma_count - 1) * 2 == length - 1
+                || !AST_Node::arc_belongs_to_AST_type(
+                    tree[i + (comma_count - 1) * 2 + 1].clone(),
+                    expected_types,
+                )
+            {
+                let error_idx = match i + (comma_count - 1) * 2 {
+                    tmp if tmp == length - 1 => 0,
+                    tmp => tmp + 1,
+                };
+                return SubParseState::Err(ErrorLox::from_arc_mutex_ast_node(
+                    tree[error_idx].clone(),
+                    &format!("Expected {expected_types:?}"),
+                    source,
+                ));
+            }
+        }
+
+        for j in 0..=comma_count {
+            AST_Node::arc_mutex_append_child(tree[i].clone(), tree[i - 1 + j * 2].clone())
+        }
+        AST_Node::set_arc_mutex_AST_Type(tree[i].clone(), AST_Type::Tuple);
+
+        for j in ((i + 1)..=(i + comma_count * 2 - 1)).rev() {
+            tree.remove(j);
+        }
+        tree.remove(i - 1);
+
+
+        length -= 2 * comma_count;
+        i += 1;
+    }
+
     SubParseState::Finished
 }
