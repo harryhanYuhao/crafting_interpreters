@@ -74,7 +74,7 @@ pub(crate) fn scan_iteration(
         source_vec: &[char],
     ) -> Option<Token> {
         let token: Token;
-        if source_vec.len() <= 1 {
+        if source_vec.len() <= *poke {
             token = Token::new(
                 single_type,
                 String::from(source_vec[*poke - 1]),
@@ -102,6 +102,11 @@ pub(crate) fn scan_iteration(
 
     // START OF EXECUTION
     let mut poke = start + 1;
+    // start source_vec[start] is the current char at investigation. poke is one bigger then
+    // start, and shall be set to the next index under investigation for the next iteration. 
+    // *start = poke is executed in the end of the funciton 
+
+
     let token: Option<Token>;
     match source_vec[start] {
         '(' => {

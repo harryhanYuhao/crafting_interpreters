@@ -106,3 +106,25 @@ fn parser_match_ast_pattern() {
     );
     assert_eq!(res, PatternMatchingRes::FailedAt(3));
 }
+
+#[test]
+fn parser_match_ast_repetitive_pattern(){
+    let string = "a = a = a =";
+    let mut line_number = 1;
+    let mut parse_tree: ParseTreeUnfinshed = ParseTreeUnfinshed::new();
+    let tokens: TokenArcVec = scanner::scan_tokens(string, &mut line_number, "stdin").unwrap();
+    let tree = parser::ParseTreeUnfinshed::from(&tokens);
+    // println!("{tree:?}");
+    
+    let res = tree.match_ast_repetitive_pattern(0, &vec![
+        vec![AST_Type::Identifier],
+        vec![AST_Type::Unparsed(TokenType::EQUAL)],
+    ]);
+    assert_eq!(res, RepetitivePatternMatchingRes::MatchUntil(5));
+
+    let res = tree.match_ast_repetitive_pattern(0, &vec![
+        vec![AST_Type::Unknown],
+        vec![AST_Type::Unparsed(TokenType::EQUAL)],
+    ]);
+    assert_eq!(res, RepetitivePatternMatchingRes::Nomatch);
+}

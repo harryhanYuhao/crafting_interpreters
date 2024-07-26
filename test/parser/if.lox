@@ -1,0 +1,7 @@
+if true {
+	var a = 1
+} else {
+	var a = 2
+}
+
+var a = b
