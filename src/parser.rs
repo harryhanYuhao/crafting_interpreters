@@ -158,13 +158,15 @@ impl ParseTreeUnfinshed {
     ) -> RepetitivePatternMatchingRes {
         let mut matched_num = 0;
         let pattern_length = patterns.len();
-        while AST_Node::arc_belongs_to_AST_type(
-            self[index + matched_num].clone(),
-            &patterns[matched_num % pattern_length],
-        ) {
+        while index + matched_num < self.len()
+            && AST_Node::arc_belongs_to_AST_type(
+                self[index + matched_num].clone(),
+                &patterns[matched_num % pattern_length],
+            )
+        {
             matched_num += 1;
         }
-        
+
         if matched_num == 0 {
             return RepetitivePatternMatchingRes::Nomatch;
         }
@@ -1127,8 +1129,8 @@ fn parse_if(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
                 source,
             ));
         }
-
-        // The first step of parsing: disregarding else and else if for now
+        // the if (RVALUE) {STMT} is parsed``
+        // disregarding else and else if for now
         {
             let mut root = tree[i].lock().unwrap();
             root.set_AST_Type(AST_Type::Stmt(StmtType::If));
@@ -1141,36 +1143,66 @@ fn parse_if(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
         tree.remove(i + 1);
         length -= 2;
         i += 1;
+        // get next valid statemnet before continuing parsing
 
-        // handling else and else if
-        if i < length
-            && AST_Node::get_AST_Type_from_arc(tree[i].clone())
-                != AST_Type::Unparsed(TokenType::ELSE)
-        {
-            i += 1;
-            continue;
-        }
+        // Ignoring STMT_SEP
+        // while i < length
+        //     && AST_Node::get_AST_Type_from_arc(tree[i].clone())
+        //         == AST_Type::Unparsed(TokenType::STMT_SEP)
+        // {
+        //     println!("Deleted");
+        //     tree.remove(i);
+        //     length -= 1;
+        // }
+        // Finishing parsing if (RVALUE) {STMT}
 
-        // tree[i] is else
-        if i + 1 == length
-            || !AST_Node::arc_belongs_to_AST_type(
-                tree[i + 1].clone(),
-                &vec![
-                    AST_Type::Stmt(StmtType::Braced),
-                    AST_Type::Unparsed(TokenType::IF),
-                ],
-            )
-        {
-            return SubParseState::Err(ErrorLox::from_arc_mutex_ast_node(
-                tree[i + 1].clone(),
-                &format!("Expected Braced Statment or if after else",),
-                source,
-            ));
-        }
+        println!("tree[i] is :\n{}\nEND", tree[i].clone().lock().unwrap());
+
+        // NOTE: tree[i] is else
+
+        // let num_of_elif_stmt: usize;
+        // let res = tree.match_ast_repetitive_pattern(
+        //     i,
+        //     &vec![
+        //         vec![AST_Type::Unparsed(TokenType::ELSE)],
+        //         vec![AST_Type::Unparsed(TokenType::IF)],
+        //         RVALUES.clone(),
+        //         vec![AST_Type::Stmt(StmtType::Braced)],
+        //     ],
+        // );
+        // println!("res: {res:?}");
+        // match res {
+        //     RepetitivePatternMatchingRes::Nomatch => {
+        //         // i += 1;
+        //         // continue;
+        //     }
+        //     RepetitivePatternMatchingRes::MatchUntil(num) => match num % 4 {
+        //         1 => {
+        //             // matched else and if
+        //             return SubParseState::Err(ErrorLox::from_arc_mutex_ast_node(
+        //                 tree[i + 1].clone(),
+        //                 &format!("Expected RVALUES after if",),
+        //                 source,
+        //             ));
+        //         }
+        //         2 => {
+        //             return SubParseState::Err(ErrorLox::from_arc_mutex_ast_node(
+        //                 tree[i + 1].clone(),
+        //                 &format!("Expected braced stmt after if",),
+        //                 source,
+        //             ));
+        //         }
+        //         _ => {
+        //             num_of_elif_stmt = (num + 1) / 4;
+        //             println!("num_of_elif_stmt: {num_of_elif_stmt}");
+        //         }
+        //     },
+        // }
 
         // else {}
-
-        if AST_Node::get_AST_Type_from_arc(tree[i + 1].clone()) == AST_Type::Stmt(StmtType::Braced)
+        if i + 1 < length
+            && AST_Node::get_AST_Type_from_arc(tree[i + 1].clone())
+                == AST_Type::Stmt(StmtType::Braced)
         {
             AST_Node::arc_mutex_append_child(tree[i - 1].clone(), tree[i + 1].clone());
             tree.remove(i + 1);
@@ -1178,21 +1210,6 @@ fn parse_if(tree: &mut ParseTreeUnfinshed, source: &str) -> SubParseState {
             length -= 2;
             i += 2;
             continue;
-        }
-
-        // in this case tree[i+1] is if. Check if braced stmt follows
-
-        if i + 2 == length
-            || !AST_Node::arc_belongs_to_AST_type(
-                tree[i + 2].clone(),
-                &vec![AST_Type::Stmt(StmtType::Braced)],
-            )
-        {
-            return SubParseState::Err(ErrorLox::from_arc_mutex_ast_node(
-                tree[i + 1].clone(),
-                &format!("Expected Braced Statment after else",),
-                source,
-            ));
         }
     }
     SubParseState::Finished

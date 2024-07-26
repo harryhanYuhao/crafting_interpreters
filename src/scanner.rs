@@ -103,9 +103,8 @@ pub(crate) fn scan_iteration(
     // START OF EXECUTION
     let mut poke = start + 1;
     // start source_vec[start] is the current char at investigation. poke is one bigger then
-    // start, and shall be set to the next index under investigation for the next iteration. 
-    // *start = poke is executed in the end of the funciton 
-
+    // start, and shall be set to the next index under investigation for the next iteration.
+    // *start = poke is executed in the end of the funciton
 
     let token: Option<Token>;
     match source_vec[start] {
@@ -362,7 +361,7 @@ pub(crate) fn scan_iteration(
                 &format!("'{}' is an invalid token", source_vec[start]),
                 *line,
                 *column,
-                "test.lox",
+                source_file,
             ))
         }
     }

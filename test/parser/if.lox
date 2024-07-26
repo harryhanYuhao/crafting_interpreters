@@ -3,5 +3,3 @@ if true {
 } else {
 	var a = 2
 }
-
-var a = b
