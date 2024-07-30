@@ -150,13 +150,3 @@ impl fmt::Display for ErrorLox {
 }
 
 impl Error for ErrorLox {}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn display() {
-        println!("{}", ErrorLox::from_filename("aha", 1, 10, "test.lox"))
-    }
-}

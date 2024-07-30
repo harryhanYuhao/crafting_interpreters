@@ -39,21 +39,39 @@ pub fn run_file(path: &str) -> Result<(), ErrorLox> {
 
     for (index, line) in read_lines(path).iter().enumerate() {
         println!("{:<2}{}", index + 1, line);
-
-        let res = parser::parse_from_string(line, &mut line_number, &mut parse_tree, path);
-        match res {
-            ParseState::Err(e) => {
-                return Err(e);
-            }
-            ParseState::Unfinished => {
-                println!("Unfinished:\n{:?}", parse_tree);
-            }
-            ParseState::Finished => {
-                println!("{:?}", parse_tree);
-            }
-        }
-        line_number += 1;
     }
+
+    let contents = std::fs::read_to_string(path).expect("Should have been able to read the file");
+    let res = parser::parse_from_string(&contents, &mut line_number, &mut parse_tree, path);
+    match res {
+        ParseState::Err(e) => {
+            return Err(e);
+        }
+        ParseState::Unfinished => {
+            println!("Unfinished:\n{:?}", parse_tree);
+        }
+        ParseState::Finished => {
+            println!("{:?}", parse_tree);
+        }
+    }
+
+    // for (index, line) in read_lines(path).iter().enumerate() {
+    //     println!("{:<2}{}", index + 1, line);
+    //
+    //     let res = parser::parse_from_string(line, &mut line_number, &mut parse_tree, path);
+    //     match res {
+    //         ParseState::Err(e) => {
+    //             return Err(e);
+    //         }
+    //         ParseState::Unfinished => {
+    //             println!("Unfinished:\n{:?}", parse_tree);
+    //         }
+    //         ParseState::Finished => {
+    //             println!("{:?}", parse_tree);
+    //         }
+    //     }
+    //     line_number += 1;
+    // }
 
     Ok(())
 }
