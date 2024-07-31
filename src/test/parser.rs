@@ -1,7 +1,7 @@
 use crate::parser::{self, *};
 use crate::scanner::{self, *};
 use crate::token::*;
-use crate::AST_Node::{self, ExprType, AST_Type};
+use crate::AST_Node::{self, AST_Type, ExprType};
 use colored::*;
 
 #[test]
@@ -53,7 +53,7 @@ fn parser_match_ast_pattern() {
             ],
             vec![AST_Node::AST_Type::Unparsed(TokenType::STMT_SEP)],
         ],
-        1
+        1,
     );
     assert_eq!(res, PatternMatchingRes::Matched);
 
@@ -68,7 +68,7 @@ fn parser_match_ast_pattern() {
             ],
             vec![AST_Node::AST_Type::Unparsed(TokenType::STMT_SEP)],
         ],
-        1
+        1,
     );
     assert_eq!(res, PatternMatchingRes::FailedAt(0));
 
@@ -83,7 +83,7 @@ fn parser_match_ast_pattern() {
             ],
             vec![AST_Node::AST_Type::Unparsed(TokenType::STMT_SEP)],
         ],
-        1
+        1,
     );
     assert_eq!(res, PatternMatchingRes::Nomatch);
 
@@ -98,30 +98,36 @@ fn parser_match_ast_pattern() {
             ],
             vec![AST_Node::AST_Type::Unparsed(TokenType::EOF)],
         ],
-        1
+        1,
     );
     assert_eq!(res, PatternMatchingRes::FailedAt(3));
 }
 
 #[test]
-fn parser_match_ast_repetitive_pattern(){
+fn parser_match_ast_repetitive_pattern() {
     let string = "a = a = a =";
     let mut line_number = 1;
     let mut parse_tree: ParseTreeUnfinshed = ParseTreeUnfinshed::new();
     let tokens: TokenArcVec = scanner::scan_tokens(string, &mut line_number, "stdin").unwrap();
     let tree = parser::ParseTreeUnfinshed::from(&tokens);
     // println!("{tree:?}");
-    
-    let res = tree.match_ast_repetitive_pattern(0, &vec![
-        vec![AST_Type::Identifier],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-    ]);
+
+    let res = tree.match_ast_repetitive_pattern(
+        0,
+        &vec![
+            vec![AST_Type::Identifier],
+            vec![AST_Type::Unparsed(TokenType::EQUAL)],
+        ],
+    );
     assert_eq!(res, RepetitivePatternMatchingRes::MatchUntil(5));
 
-    let res = tree.match_ast_repetitive_pattern(0, &vec![
-        vec![AST_Type::Unknown],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-    ]);
+    let res = tree.match_ast_repetitive_pattern(
+        0,
+        &vec![
+            vec![AST_Type::Unknown],
+            vec![AST_Type::Unparsed(TokenType::EQUAL)],
+        ],
+    );
     assert_eq!(res, RepetitivePatternMatchingRes::Nomatch);
 
     let string = "a = a = a b";
@@ -130,32 +136,31 @@ fn parser_match_ast_repetitive_pattern(){
     let tokens: TokenArcVec = scanner::scan_tokens(string, &mut line_number, "stdin").unwrap();
     let tree = parser::ParseTreeUnfinshed::from(&tokens);
     // println!("{tree:?}");
-    
-    let res = tree.match_ast_repetitive_pattern(0, &vec![
-        vec![AST_Type::Identifier],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-        vec![AST_Type::Unparsed(TokenType::EQUAL)],
-    ]);
+
+    let res = tree.match_ast_repetitive_pattern(
+        0,
+        &vec![
+            vec![AST_Type::Identifier],
+            vec![AST_Type::Unparsed(TokenType::EQUAL)],
+            vec![AST_Type::Unparsed(TokenType::EQUAL)],
+            vec![AST_Type::Unparsed(TokenType::EQUAL)],
+            vec![AST_Type::Unparsed(TokenType::EQUAL)],
+            vec![AST_Type::Unparsed(TokenType::EQUAL)],
+            vec![AST_Type::Unparsed(TokenType::EQUAL)],
+        ],
+    );
     assert_eq!(res, RepetitivePatternMatchingRes::MatchUntil(1));
+}
+
+#[test]
+fn delete_consect_stmt_sep() {
+    let string = "a\n\n\n\nb";
+    let mut line_number = 1;
+    let mut parse_tree: ParseTreeUnfinshed = ParseTreeUnfinshed::new();
+    let tokens: TokenArcVec = scanner::scan_tokens(string, &mut line_number, "stdin").unwrap();
+
+    let mut tree = parser::ParseTreeUnfinshed::from(&tokens);
+    assert_eq!(delete_consec_stmt_sep_from_idx_inclusive(&mut tree, 0), 0);
+    let mut tree = parser::ParseTreeUnfinshed::from(&tokens);
+    assert_eq!(delete_consec_stmt_sep_from_idx_inclusive(&mut tree, 1), 4);
 }

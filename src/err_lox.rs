@@ -10,6 +10,9 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::sync::{Arc, Mutex};
 
+// DEBUG:
+use log::{debug, error, info, trace, warn};
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorType {
     ParseErr,

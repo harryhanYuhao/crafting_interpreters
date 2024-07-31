@@ -1,3 +1,6 @@
-if true {
+if true 
+
+
+{
 	var a = 2
 }

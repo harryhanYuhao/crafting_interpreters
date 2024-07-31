@@ -14,6 +14,22 @@ use std::ops::{Index, IndexMut, Sub};
 use std::sync::{Arc, Mutex};
 use std::usize;
 
+macro_rules! delete_stmt_sep_adjust_len {
+    ($tree:expr, $idx:expr, $len:expr) => {
+        $len -= delete_consec_stmt_sep_from_idx_inclusive($tree, $idx);
+    };
+}
+
+macro_rules! HandleParseState {
+    ($fun:expr) => {
+        match $fun {
+            ParseState::Finished => {}
+            ParseState::Err(err) => return ParseState::Err(err),
+            _ => {}
+        }
+    };
+}
+
 lazy_static! {
     static ref RVALUES: Vec<AST_Type> =
         [AST_Type::get_all_expr(), vec![AST_Type::Identifier]].concat();
@@ -152,27 +168,36 @@ impl ParseTreeUnfinshed {
 
     /// Provided a tree and an index, check if the repetitive pattern matches.
     /// If not matched, return 0,
-    /// if mathced, return th
+    /// if mathced, return the number of nodes that matches the repetitive pattern
+    ///
+    /// eg:
     pub(crate) fn match_ast_repetitive_pattern(
-        &self,
+        &mut self,
         index: usize,
         patterns: &[Vec<AST_Type>],
-    ) -> RepetitivePatternMatchingRes {
+    ) -> (RepetitivePatternMatchingRes, usize) {
         let mut matched_num = 0;
         let pattern_length = patterns.len();
-        while index + matched_num < self.len()
+        let mut length = self.len();
+        let init_len = length;
+        while index + matched_num < length
             && AST_Node::arc_belongs_to_AST_type(
                 self[index + matched_num].clone(),
                 &patterns[matched_num % pattern_length],
             )
         {
             matched_num += 1;
+            delete_stmt_sep_adjust_len!(self, index + matched_num, length);
         }
 
         if matched_num == 0 {
-            return RepetitivePatternMatchingRes::Nomatch;
+            return (RepetitivePatternMatchingRes::Nomatch, 0);
         }
-        RepetitivePatternMatchingRes::MatchUntil(matched_num - 1)
+
+        (
+            RepetitivePatternMatchingRes::MatchUntil(matched_num - 1),
+            init_len - length,
+        )
     }
 }
 
@@ -254,16 +279,6 @@ pub fn parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
     tree.extend(input_list);
 
     real_parse(tree, source)
-}
-
-macro_rules! HandleParseState {
-    ($fun:expr) => {
-        match $fun {
-            ParseState::Finished => {}
-            ParseState::Err(err) => return ParseState::Err(err),
-            _ => {}
-        }
-    };
 }
 
 // this is the real parse. Define here for recursion
@@ -446,6 +461,22 @@ macro_rules! ProprogateUnitlValid {
             None => return ParseState::Finished,
         }
     };
+}
+
+/// Delete all consective stmt_sep starting from index onwards. Return number of deleted nodes
+pub(crate) fn delete_consec_stmt_sep_from_idx_inclusive(
+    tree: &mut ParseTreeUnfinshed,
+    idx: usize,
+) -> usize {
+    let upper = match get_next_valid_node(tree, idx) {
+        None => tree.len(),
+        Some(num) => num,
+    };
+    for _ in idx..upper {
+        tree.remove(idx);
+    }
+
+    upper - idx
 }
 
 /// trying to find the matching location for left ... right. left token and right token shall
@@ -988,6 +1019,7 @@ fn parse_ternary_stmt_like_while(
             i += 1;
             continue;
         }
+        delete_consec_stmt_sep_from_idx_inclusive(tree, i + 1);
         if !AST_Node::arc_belongs_to_AST_type(tree[i + 1].clone(), left_ast_types) {
             return ParseState::Err(ErrorLox::from_arc_mutex_ast_node(
                 tree[i].clone(),
@@ -995,6 +1027,7 @@ fn parse_ternary_stmt_like_while(
                 source,
             ));
         }
+        delete_consec_stmt_sep_from_idx_inclusive(tree, i + 2);
         // check the third toklen
         if !AST_Node::arc_belongs_to_AST_type(tree[i + 2].clone(), right_ast_types) {
             return ParseState::Err(ErrorLox::from_arc_mutex_ast_node(
@@ -1106,6 +1139,8 @@ fn parse_if(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
             continue;
         }
 
+        // NOTE:: tree[i] is if
+        delete_stmt_sep_adjust_len!(tree, i + 1, length);
         if i + 1 == length - 1 || !AST_Node::arc_belongs_to_AST_type(tree[i + 1].clone(), &RVALUES)
         {
             let error_idx = match i + 1 {
@@ -1119,6 +1154,9 @@ fn parse_if(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
             ));
         }
 
+        // after RVALUE, braced stmt may be on the new line
+        delete_stmt_sep_adjust_len!(tree, i + 2, length);
+
         if i + 2 == length - 1
             || !AST_Node::arc_belongs_to_AST_type(
                 tree[i + 2].clone(),
@@ -1126,8 +1164,8 @@ fn parse_if(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
             )
         {
             let error_idx = match i + 2 {
-                tmp if tmp == length - 1 => length - 1,
-                tmp => tmp + 2,
+                tmp if tmp <= length - 1 => tmp,
+                _ => length - 1,
             };
             return ParseState::Err(ErrorLox::from_arc_mutex_ast_node(
                 tree[error_idx].clone(),
@@ -1150,15 +1188,14 @@ fn parse_if(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         tree.remove(i + 1);
         length -= 2;
         i += 1;
+
         // get next valid statemnet before continuing parsing
-        i = ProprogateUnitlValid!(tree, i);
-
+        delete_stmt_sep_adjust_len!(tree, i, length);
         // NOTE: tree[i] may not be else
-
         // Finishing parsing pattern:
         // if (RVALUE) {STMT}
         let mut num_of_elif_stmt: usize = 0;
-        let res = tree.match_ast_repetitive_pattern(
+        let (res, delta) = tree.match_ast_repetitive_pattern(
             i,
             &vec![
                 vec![AST_Type::Unparsed(TokenType::ELSE)],
@@ -1167,6 +1204,7 @@ fn parse_if(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
                 vec![AST_Type::Stmt(StmtType::Braced)],
             ],
         );
+        length -= delta;
         // println!("res: {res:?}");
         match res {
             // in such case there is no else
@@ -1218,7 +1256,7 @@ fn parse_if(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         }
 
         // check the dangling else
-        i = ProprogateUnitlValid!(tree, i);
+        delete_stmt_sep_adjust_len!(tree, i, length);
         if i >= length
             || AST_Node::get_AST_Type_from_arc(tree[i].clone())
                 != AST_Type::Unparsed(TokenType::ELSE)
@@ -1228,7 +1266,7 @@ fn parse_if(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         }
 
         // now tree[i] is else,
-        i = ProprogateUnitlValid!(tree, i);
+        delete_stmt_sep_adjust_len!(tree, i, length);
         // else {}
         if i + 1 >= length
             || AST_Node::get_AST_Type_from_arc(tree[i + 1].clone())
@@ -1243,7 +1281,7 @@ fn parse_if(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
 
         AST_Node::arc_mutex_append_child(tree[i].clone(), tree[i + 1].clone());
         AST_Node::arc_mutex_append_child(tree[root_idx].clone(), tree[i].clone());
-        
+
         tree.remove(i + 1);
         tree.remove(i);
         length -= 2;
