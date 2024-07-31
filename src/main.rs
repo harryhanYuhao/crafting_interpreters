@@ -6,19 +6,22 @@ use lox_rust::{help, run_file, run_prompt};
 // https://docs.rs/clap/latest/clap/_derive/_tutorial/chapter_0/index.html
 
 fn main() {
+    // DEBUG:
+    colog::default_builder()
+        .filter(None, log::LevelFilter::Trace)
+        .init();
+
     let args: Vec<String> = env::args().collect();
     match args.len() {
         1 => {
             run_prompt().unwrap();
         }
-        2 => {
-            match run_file(&args[1]) {
-                Err(e)=> {
-                    e.panic();
-                },
-                _ => {}
+        2 => match run_file(&args[1]) {
+            Err(e) => {
+                e.panic();
             }
-        }
+            _ => {}
+        },
         _ => {
             help();
         }

@@ -21,6 +21,7 @@ pub enum StmtType {
     Declaration,
     Compound,
     If,
+    Elseif,
     While,
     PlusEqual,
     MinusEqual,

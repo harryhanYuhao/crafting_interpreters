@@ -1,0 +1,9 @@
+if true {
+	var a = 1
+} else if true {
+	var a = 2
+} else if true {
+	var a = 2
+} else {
+	1
+} 

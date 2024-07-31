@@ -6,12 +6,9 @@ use colored::*;
 
 #[test]
 fn plus_minus_paren() {
-    let input = "1-2";
-    // println!("{}: {}", "input".bright_blue().bold(), input);
     println!("{}", "Parser Tree:".cyan().bold());
-    let mut line = 0;
     let mut parse_tree: ParseTreeUnfinshed = ParseTreeUnfinshed::new();
-    let res = parse_from_string(input, &mut line, &mut parse_tree, "sdtin");
+    let res = parse(&mut parse_tree, "./test/plus_minus.lox");
     match res {
         ParseState::Err(e) => {
             panic!("{}: {}", "Error".red().bold(), format!("{:?}", e).bold());
@@ -43,7 +40,6 @@ fn delimiter_location() {
 fn parser_match_ast_pattern() {
     let string = "a = 2;";
     let mut line_number = 1;
-    let mut parse_tree: ParseTreeUnfinshed = ParseTreeUnfinshed::new();
     let tokens: TokenArcVec = scanner::scan_tokens(string, &mut line_number, "stdin").unwrap();
     let tree = parser::ParseTreeUnfinshed::from(&tokens);
     let res = tree.match_ast_pattern(

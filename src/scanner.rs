@@ -33,8 +33,6 @@ pub fn scan_tokens(
             None => {}
         }
     }
-    // EOF also counts as STMT_SEP
-    token_vec.push(Token::new(TokenType::STMT_SEP, String::from("\\xa"), *line, column).into());
     Ok(token_vec)
 }
 
@@ -332,7 +330,7 @@ pub(crate) fn scan_iteration(
             *column = 0;
             token = Some(Token::new(
                 TokenType::STMT_SEP,
-                String::from(source_vec[start]),
+                String::from("\\xa"),
                 *line,
                 *column,
             ))
