@@ -636,37 +636,46 @@ fn parse_braces(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
                     source,
                 ));
             }
-            ParseState::Finished => {
-                let res = match slice.get_finished_node(source) {
-                    Ok(ok) => ok,
-                    Err(e) => return ParseState::Err(e),
-                };
-                // the parse result may be none
-                // If there is result, the result is presented by one compound
-                // stmt, which is redundant
-                match res {
-                    // in such case the parenethesis is just by itself
-                    None => {
-                        tree.remove(end);
-                        AST_Node::set_arc_mutex_AST_Type(
-                            tree[start].clone(),
-                            AST_Type::Stmt(StmtType::Braced),
-                        );
-                    }
-                    Some(result) => {
-                        for _ in (start + 1)..=(end) {
-                            tree.remove(start + 1);
-                        }
-                        // tree.replace(start, result);
-                        AST_Node::set_arc_mutex_AST_Type(
-                            tree[start].clone(),
-                            AST_Type::Stmt(StmtType::Braced),
-                        );
-                        AST_Node::arc_mutex_append_children(
-                            tree[start].clone(),
-                            &AST_Node::arc_mutex_get_children(result.clone()),
-                        );
-                    }
+            ParseState::Finished => {}
+        };
+
+        // we have a success sub parse
+        let res = match slice.get_finished_node(source) {
+            Ok(ok) => ok,
+            Err(e) => return ParseState::Err(e),
+        };
+        // the parse result may be none
+        // If there is result, the result is presented by one compound
+        // stmt, which is redundant
+        match res {
+            // in such case the parenethesis is just by itself
+            None => {
+                tree.remove(end);
+                AST_Node::set_arc_mutex_AST_Type(
+                    tree[start].clone(),
+                    AST_Type::Stmt(StmtType::Braced),
+                );
+            }
+            Some(result) => {
+                for _ in (start + 1)..=(end) {
+                    tree.remove(start + 1);
+                }
+                // tree.replace(start, result);
+                AST_Node::set_arc_mutex_AST_Type(
+                    tree[start].clone(),
+                    AST_Type::Stmt(StmtType::Braced),
+                );
+                // if the result is a compound stmt: deconstruct the compound stmt
+                // and append its children to start
+                if AST_Node::get_AST_Type_from_arc(result.clone())
+                    == AST_Type::Stmt(StmtType::Compound)
+                {
+                    AST_Node::arc_mutex_append_children(
+                        tree[start].clone(),
+                        &AST_Node::arc_mutex_get_children(result.clone()),
+                    );
+                } else {
+                    AST_Node::arc_mutex_append_child(tree[start].clone(), result)
                 }
             }
         }

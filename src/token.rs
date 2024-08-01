@@ -50,7 +50,6 @@ pub enum TokenType {
     IF,
     NIL,
     OR, // copulative
-    PRINT,
     RETURN,
     SUPER,
     THIS,
@@ -103,7 +102,6 @@ impl fmt::Debug for TokenType {
             TokenType::IF => write!(f, "IF"),
             TokenType::NIL => write!(f, "NIL"),
             TokenType::OR => write!(f, "OR"),
-            TokenType::PRINT => write!(f, "PRINT"),
             TokenType::RETURN => write!(f, "RETURN"),
             TokenType::SUPER => write!(f, "SUPER"),
             TokenType::THIS => write!(f, "THIS"),
@@ -117,7 +115,7 @@ impl fmt::Debug for TokenType {
 }
 
 // This list only used for generating random TokenType from index
-static TOKEN_TYPE_LIST: [TokenType; 46] = [
+static TOKEN_TYPE_LIST: [TokenType; 45] = [
     TokenType::LEFT_PAREN,
     TokenType::RIGHT_PAREN,
     TokenType::LEFT_BRACE,
@@ -155,7 +153,6 @@ static TOKEN_TYPE_LIST: [TokenType; 46] = [
     TokenType::IF,
     TokenType::NIL,
     TokenType::OR, // copulative
-    TokenType::PRINT,
     TokenType::RETURN,
     TokenType::SUPER,
     TokenType::THIS,
@@ -178,7 +175,6 @@ lazy_static! {
             ("if".into(), TokenType::IF),
             ("nil".into(), TokenType::NIL),
             ("or".into(), TokenType::OR),
-            ("print".into(), TokenType::PRINT),
             ("return".into(), TokenType::RETURN),
             ("super".into(), TokenType::SUPER),
             ("this".into(), TokenType::THIS),

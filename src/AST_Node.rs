@@ -78,6 +78,7 @@ impl From<Arc<Mutex<Token>>> for AST_Type {
         match Token::get_token_type_from_arc(s.clone()) {
             TokenType::NUMBER => res = AST_Type::Expr(ExprType::Normal),
             TokenType::IDENTIFIER => res = AST_Type::Identifier,
+            TokenType::STRING => res = AST_Type::Expr(ExprType::Normal),
             // TokenType::STMT_SEP => {
             //     res = AST_Type::Stmt(StmtType::Normal);
             // }
