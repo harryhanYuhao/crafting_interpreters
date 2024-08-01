@@ -2,12 +2,9 @@
 #[macro_use]
 extern crate lazy_static;
 
-pub mod parser;
-pub mod scanner;
-pub mod token;
+pub mod interpreter;
+pub mod runtime;
 
-#[allow(non_snake_case)]
-mod AST_Node;
 pub mod err_lox;
 
 mod test;
@@ -17,11 +14,11 @@ use std::fs::read_to_string;
 use std::io::{self, prelude::*, stdout, BufReader, Write};
 use std::sync::{Arc, Mutex};
 
-use parser::ParseTreeUnfinshed;
+use interpreter::parser::{parse, ParseState, ParseTreeUnfinshed};
+use interpreter::scanner::scan_tokens;
+use interpreter::token::TokenArcVec;
 
 use crate::err_lox::ErrorLox;
-use crate::parser::ParseState;
-use crate::token::TokenArcVec;
 
 // TODO: remove collect and return iterator
 fn read_lines(filename: &str) -> Vec<String> {
@@ -40,7 +37,7 @@ pub fn run_file(path: &str) -> Result<(), ErrorLox> {
         println!("{:<2}{}", index + 1, line);
     }
 
-    let res = parser::parse(&mut parse_tree, path);
+    let res = parse(&mut parse_tree, path);
     match res {
         ParseState::Err(e) => {
             return Err(e);
@@ -66,7 +63,7 @@ pub fn run_prompt() -> Result<(), Box<dyn Error>> {
         print!("{line} >>> ");
         stdout().flush()?;
         io::stdin().read_line(&mut buffer)?;
-        let tokens = scanner::scan_tokens(&buffer, &mut line, "stdin").unwrap();
+        let tokens = scan_tokens(&buffer, &mut line, "stdin").unwrap();
         for i in tokens {
             println!("{:?}", i.lock().unwrap());
         }

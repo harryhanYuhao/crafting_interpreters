@@ -1,5 +1,5 @@
-use crate::scanner::*;
-use crate::token::*;
+use crate::interpreter::scanner::*;
+use crate::interpreter::token::*;
 use colored::*;
 
 #[test]

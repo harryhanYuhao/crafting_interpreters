@@ -1,8 +1,8 @@
 use std::error::Error;
 use std::fmt;
 
-use crate::token::Token;
-use crate::AST_Node::AST_Node;
+use crate::interpreter::token::Token;
+use crate::interpreter::AST_Node::AST_Node;
 use clap::error::ErrorKind;
 use colored::*;
 use std::convert::From;

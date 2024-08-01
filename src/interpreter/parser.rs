@@ -3,9 +3,9 @@
 use log::{debug, error, info, trace, warn};
 
 use crate::err_lox::*;
-use crate::scanner;
-use crate::token::{self, Token, TokenArcVec, TokenType};
-use crate::AST_Node::*;
+use crate::interpreter::scanner;
+use crate::interpreter::token::{self, Token, TokenArcVec, TokenType};
+use crate::interpreter::AST_Node::*;
 use std::convert::From;
 use std::error::Error;
 use std::fmt;

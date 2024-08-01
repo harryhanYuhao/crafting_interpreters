@@ -1,5 +1,5 @@
 //! The tree struct defined here is the abstract syntax tree
-use crate::token::{self, Token, TokenType};
+use crate::interpreter::token::{self, Token, TokenType};
 use rand::Rng;
 use std::convert::From;
 use std::error::Error;

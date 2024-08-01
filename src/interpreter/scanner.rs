@@ -1,5 +1,5 @@
 use crate::err_lox::*;
-use crate::token::{self, Token, TokenType};
+use crate::interpreter::token::{self, Token, TokenType};
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 
