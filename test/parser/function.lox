@@ -1,0 +1,4 @@
+fn hello (a,b){
+	a + b
+}
+hello (1, a)

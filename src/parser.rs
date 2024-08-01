@@ -14,6 +14,11 @@ use std::ops::{Index, IndexMut, Sub};
 use std::sync::{Arc, Mutex};
 use std::usize;
 
+// delete_consec_stmt_sep_from_idx_inclusive(tree, index) delete all consective stmt_sep starting
+// from tree[index], inclusively, and returns the number of nodes deleted
+// If tree[index] is not stmt_sep, it do nothing.
+//
+// the number of removed index is removed from $len
 macro_rules! delete_stmt_sep_adjust_len {
     ($tree:expr, $idx:expr, $len:expr) => {
         $len -= delete_consec_stmt_sep_from_idx_inclusive($tree, $idx);
@@ -289,6 +294,8 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
 
     HandleParseState!(parse_parenthesis(tree, source));
     HandleParseState!(parse_braces(tree, source));
+    HandleParseState!(parse_function_definition(tree, source));
+    HandleParseState!(parse_function_eval(tree, source));
 
     HandleParseState!(parse_prefix(
         tree,
@@ -452,15 +459,6 @@ fn get_next_valid_node(tree: &ParseTreeUnfinshed, index: usize) -> Option<usize>
     }
 
     None
-}
-
-macro_rules! ProprogateUnitlValid {
-    ($tree:expr, $idx:expr) => {
-        match get_next_valid_node($tree, $idx) {
-            Some(a) => a,
-            None => return ParseState::Finished,
-        }
-    };
 }
 
 /// Delete all consective stmt_sep starting from index onwards. Return number of deleted nodes
@@ -673,6 +671,72 @@ fn parse_braces(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
             }
         }
     }
+    ParseState::Finished
+}
+
+fn parse_function_eval(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
+    let mut i = 0;
+    let mut length = tree.len();
+
+    while i < length {
+        if AST_Node::get_AST_Type_from_arc(tree[i].clone()) != AST_Type::Identifier {
+            i += 1;
+            continue;
+        }
+        delete_stmt_sep_adjust_len!(tree, i + 1, length);
+
+        // tree[i] is identifier, tree[i+1] is a valid node
+        if i + 1 < length
+            && AST_Node::get_AST_Type_from_arc(tree[i + 1].clone())
+                == AST_Type::Expr(ExprType::Paren)
+        {
+            AST_Node::arc_mutex_append_child(tree[i].clone(), tree[i + 1].clone());
+            AST_Node::set_arc_mutex_AST_Type(tree[i].clone(), AST_Type::Expr(ExprType::Normal));
+            tree.remove(i + 1);
+            length -= 1;
+        }
+        i += 1;
+    }
+    ParseState::Finished
+}
+
+fn parse_function_definition(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
+    let mut i = 0;
+    let mut length = tree.len();
+    let patterns = vec![
+        vec![AST_Type::Unparsed(TokenType::FN)],
+        vec![AST_Type::Identifier],
+        vec![AST_Type::Expr(ExprType::Paren)],
+        vec![AST_Type::Stmt(StmtType::Braced)],
+    ];
+    while i < length {
+        match tree.match_ast_pattern(i, &patterns, 0) {
+            PatternMatchingRes::Nomatch => {}
+            PatternMatchingRes::FailedAt(num) => {
+                return ParseState::Err(ErrorLox::from_arc_mutex_ast_node(
+                    tree[i + num - 1].clone(),
+                    &format!("Expected {:?}", patterns[num]),
+                    source,
+                ))
+            }
+            PatternMatchingRes::Matched => {
+                AST_Node::arc_mutex_append_child(tree[i].clone(), tree[i + 1].clone());
+                AST_Node::arc_mutex_append_child(tree[i].clone(), tree[i + 2].clone());
+                AST_Node::arc_mutex_append_child(tree[i].clone(), tree[i + 3].clone());
+                AST_Node::set_arc_mutex_AST_Type(
+                    tree[i].clone(),
+                    AST_Type::Stmt(StmtType::FunctionDef),
+                );
+
+                tree.remove(i + 1);
+                tree.remove(i + 1);
+                tree.remove(i + 1);
+                length -= 3;
+            }
+        }
+        i += 1;
+    }
+
     ParseState::Finished
 }
 
@@ -1073,8 +1137,9 @@ fn parse_comma(
         // need to handle the cases with multiple commas like
         // 1, 2, 3, 4
         let mut comma_count = 0;
-        while AST_Node::get_AST_Type_from_arc(tree[i + comma_count * 2].clone())
-            == AST_Type::Unparsed(TokenType::COMMA)
+        while (i + comma_count * 2) < length
+            && AST_Node::get_AST_Type_from_arc(tree[i + comma_count * 2].clone())
+                == AST_Type::Unparsed(TokenType::COMMA)
         {
             comma_count += 1;
             if i + (comma_count - 1) * 2 == 0
@@ -1118,10 +1183,11 @@ fn parse_comma(
 
         for j in ((i + 1)..=(i + comma_count * 2 - 1)).rev() {
             tree.remove(j);
+            length -= 1;
         }
         tree.remove(i - 1);
+        length -= 1;
 
-        length -= 2 * comma_count;
         i += 1;
     }
 

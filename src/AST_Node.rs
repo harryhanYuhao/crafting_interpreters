@@ -27,6 +27,7 @@ pub enum StmtType {
     MinusEqual,
     StarEqual,
     SlashEqual,
+    FunctionDef,
 }
 
 /// Potential fields are for usage during parse when the type may not be identified
