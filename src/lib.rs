@@ -14,7 +14,8 @@ use std::fs::read_to_string;
 use std::io::{self, prelude::*, stdout, BufReader, Write};
 use std::sync::{Arc, Mutex};
 
-use interpreter::parser::{parse, ParseState, ParseTreeUnfinshed};
+use interpreter::parser::{parse, ParseState};
+use interpreter::parse_tree_unfinished::ParseTreeUnfinshed;
 use interpreter::scanner::scan_tokens;
 use interpreter::token::TokenArcVec;
 

@@ -111,6 +111,7 @@ impl fmt::Display for ErrorLox {
             Source::Stdin => "stdin".underline().to_string(),
         };
 
+        // error!("{:?}", self);
         let detailed_desr: String = match &self.source {
             Source::FileName(name) => {
                 let reader =
