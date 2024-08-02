@@ -93,15 +93,15 @@ pub fn parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
 }
 
 // this is the real parse. Define here for recursion
-fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
+fn real_parse(tree: &mut ParseTreeUnfinshed, source_file: &str) -> ParseState {
     if tree.len() <= 1 {
         return ParseState::Finished;
     }
 
-    HandleParseState!(parse_parenthesis(tree, source));
-    HandleParseState!(parse_braces(tree, source));
-    HandleParseState!(parse_function_definition(tree, source));
-    HandleParseState!(parse_function_eval(tree, source));
+    HandleParseState!(parse_parenthesis(tree, source_file));
+    HandleParseState!(parse_braces(tree, source_file));
+    HandleParseState!(parse_function_definition(tree, source_file));
+    HandleParseState!(parse_function_eval(tree, source_file));
 
     HandleParseState!(parse_prefix(
         tree,
@@ -118,7 +118,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         ]
         .concat(),
         AST_Type::Expr(ExprType::Negated),
-        source
+        source_file
     ));
 
     let plus_minus_ternery_valid_types =
@@ -131,7 +131,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         &vec![TokenType::STAR, TokenType::SLASH, TokenType::PERCENT],
         &plus_minus_ternery_valid_types,
         AST_Type::Expr(ExprType::Normal),
-        source
+        source_file
     ));
     // parse plus minus
     HandleParseState!(parse_ternary_left_assoc(
@@ -140,7 +140,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         &vec![TokenType::PLUS, TokenType::MINUS],
         &plus_minus_ternery_valid_types,
         AST_Type::Expr(ExprType::Normal),
-        source
+        source_file
     ));
 
     // parse >=, <=, >, <
@@ -155,7 +155,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         ],
         &plus_minus_ternery_valid_types,
         AST_Type::Expr(ExprType::Normal),
-        source
+        source_file
     ));
 
     //parse ==, !=
@@ -165,7 +165,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         &vec![TokenType::EQUAL_EQUAL, TokenType::BANG_EQUAL],
         &plus_minus_ternery_valid_types,
         AST_Type::Expr(ExprType::Normal),
-        source
+        source_file
     ));
 
     // println!("Before ASSIGNMENT:\n{tree:?}\nEND");
@@ -174,7 +174,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         tree,
         vec![AST_Type::Unparsed(TokenType::EQUAL)],
         AST_Type::Stmt(StmtType::Assignment),
-        source
+        source_file
     ));
 
     // parse a += 1
@@ -182,7 +182,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         tree,
         vec![AST_Type::Unparsed(TokenType::PLUS_EQUAL),],
         AST_Type::Stmt(StmtType::PlusEqual),
-        source
+        source_file
     ));
 
     // parse a -= 1
@@ -190,7 +190,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         tree,
         vec![AST_Type::Unparsed(TokenType::MINUS_EQUAL)],
         AST_Type::Stmt(StmtType::MinusEqual),
-        source
+        source_file
     ));
 
     // a *=1
@@ -198,7 +198,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         tree,
         vec![AST_Type::Unparsed(TokenType::STAR_EQUAL)],
         AST_Type::Stmt(StmtType::StarEqual),
-        source
+        source_file
     ));
 
     // a /= 1
@@ -206,7 +206,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         tree,
         vec![AST_Type::Unparsed(TokenType::SLASH_EQUAL)],
         AST_Type::Stmt(StmtType::SlashEqual),
-        source
+        source_file
     ));
 
     // parse var a = b;
@@ -220,10 +220,10 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         ]
         .concat(),
         AST_Type::Stmt(StmtType::Declaration),
-        source
+        source_file
     ));
 
-    HandleParseState!(parse_comma(tree, &RVALUES, AST_Type::Tuple, source));
+    HandleParseState!(parse_comma(tree, &RVALUES, AST_Type::Tuple, source_file));
 
     HandleParseState!(parse_ternary_stmt_like_while(
         tree,
@@ -234,14 +234,14 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseState {
         ],
         &vec![AST_Type::Stmt(StmtType::Braced)],
         AST_Type::Stmt(StmtType::While),
-        source,
+        source_file,
         "Expected expression after while",
         "Expected {stmt} after while",
     ));
 
-    HandleParseState!(parse_if(tree, source));
+    HandleParseState!(parse_if(tree, source_file));
 
-    HandleParseState!(parse_stmt_sep(tree, source));
+    HandleParseState!(parse_stmt_sep(tree, source_file));
     HandleParseState!(parse_stmt_into_compound_stmt(tree));
 
     tree.is_finished()
