@@ -11,6 +11,7 @@ pub enum ExprType {
     Normal,
     Paren,
     Negated,
+    Function,
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -36,14 +37,12 @@ pub enum StmtType {
 #[derive(Debug, Clone, PartialEq)]
 #[allow(non_camel_case_types)]
 pub(crate) enum AST_Type {
-    Unfinished,
     Stmt(StmtType),
-    PotentialStmt,
     Expr(ExprType),
     Identifier,
     Unknown,
     Unparsed(TokenType),
-    Tuple
+    Tuple,
 }
 
 impl AST_Type {
@@ -52,6 +51,7 @@ impl AST_Type {
             AST_Type::Expr(ExprType::Normal),
             AST_Type::Expr(ExprType::Paren),
             AST_Type::Expr(ExprType::Negated),
+            AST_Type::Expr(ExprType::Function),
         ]
     }
 
@@ -305,6 +305,17 @@ impl AST_Node {
             AST_Type,
             token: token.into(),
             children: Vec::new(),
+        }
+    }
+
+    pub(crate) fn new_wrapper_node(node: Arc<Mutex<AST_Node>>) -> Self {
+        let token = AST_Node::get_token_from_arc(node.clone());
+        let AST_Type = AST_Node::get_AST_Type_from_arc(node.clone());
+        let children = vec![node.clone()];
+        AST_Node {
+            AST_Type,
+            token,
+            children,
         }
     }
 

@@ -22,7 +22,7 @@ use std::usize;
 // If tree[index] is not stmt_sep, it do nothing.
 //
 // the number of removed index is removed from $len
-// TODO: move this macro into a function 
+// TODO: move this macro into a function
 #[macro_export]
 macro_rules! delete_stmt_sep_adjust_len {
     ($tree:expr, $idx:expr, $len:expr) => {
@@ -106,11 +106,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed, source_file: &str) -> ParseState {
     HandleParseState!(parse_prefix(
         tree,
         vec![AST_Type::Unparsed(TokenType::MINUS)],
-        vec![
-            AST_Type::Expr(ExprType::Normal),
-            AST_Type::Expr(ExprType::Paren),
-            AST_Type::Identifier,
-        ],
+        [AST_Type::get_all_expr(), vec![AST_Type::Identifier,],].concat(),
         [
             AST_Type::get_all_stmt(),
             vec![AST_Type::Unparsed(TokenType::STMT_SEP),],
@@ -506,7 +502,7 @@ fn parse_function_eval(tree: &mut ParseTreeUnfinshed, source: &str) -> ParseStat
                 == AST_Type::Expr(ExprType::Paren)
         {
             AST_Node::arc_mutex_append_child(tree[i].clone(), tree[i + 1].clone());
-            AST_Node::set_arc_mutex_AST_Type(tree[i].clone(), AST_Type::Expr(ExprType::Normal));
+            AST_Node::set_arc_mutex_AST_Type(tree[i].clone(), AST_Type::Expr(ExprType::Function));
             tree.remove(i + 1);
             length -= 1;
         }
@@ -824,9 +820,10 @@ fn parse_prefix(
             }
             PatternMatchingRes::Matched => {
                 let node = tree[i + 1].clone();
-                let mut node = node.lock().unwrap();
-                node.set_AST_Type(result_type.clone());
-                tree.remove(i);
+                let wrapper = Arc::new(Mutex::new(AST_Node::new_wrapper_node(node.clone())));
+                AST_Node::set_arc_mutex_AST_Type(wrapper.clone(), result_type.clone());
+                tree[i + 1] = wrapper;
+                tree.remove(i); // remove the prefix
                 length -= 1;
             }
         }

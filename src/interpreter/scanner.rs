@@ -70,6 +70,7 @@ pub(crate) fn scan_iteration(
         line: usize,
         column: usize,
         source_vec: &[char],
+        source_file: &str,
     ) -> Option<Token> {
         let token: Token;
         if source_vec.len() <= *poke {
@@ -78,6 +79,7 @@ pub(crate) fn scan_iteration(
                 String::from(source_vec[*poke - 1]),
                 line,
                 column,
+                source_file,
             );
         } else if source_vec[*poke] != second_char {
             token = Token::new(
@@ -85,6 +87,7 @@ pub(crate) fn scan_iteration(
                 String::from(source_vec[*poke - 1]),
                 line,
                 column,
+                source_file,
             );
         } else {
             *poke += 1;
@@ -93,6 +96,7 @@ pub(crate) fn scan_iteration(
                 source_vec[*poke - 2..=*poke - 1].iter().collect(),
                 line,
                 column,
+                source_file,
             );
         }
         Some(token)
@@ -112,6 +116,7 @@ pub(crate) fn scan_iteration(
                 String::from('('),
                 *line,
                 *column,
+                source_file,
             ))
         }
         ')' => {
@@ -120,6 +125,7 @@ pub(crate) fn scan_iteration(
                 String::from(')'),
                 *line,
                 *column,
+                source_file,
             ))
         }
         '[' => {
@@ -128,6 +134,7 @@ pub(crate) fn scan_iteration(
                 String::from(source_vec[start]),
                 *line,
                 *column,
+                source_file,
             ))
         }
         ']' => {
@@ -136,6 +143,7 @@ pub(crate) fn scan_iteration(
                 String::from(source_vec[start]),
                 *line,
                 *column,
+                source_file,
             ))
         }
         '}' => {
@@ -144,6 +152,7 @@ pub(crate) fn scan_iteration(
                 String::from(source_vec[start]),
                 *line,
                 *column,
+                source_file,
             ))
         }
         '{' => {
@@ -152,6 +161,7 @@ pub(crate) fn scan_iteration(
                 String::from(source_vec[start]),
                 *line,
                 *column,
+                source_file,
             ))
         }
         ',' => {
@@ -160,6 +170,7 @@ pub(crate) fn scan_iteration(
                 String::from(source_vec[start]),
                 *line,
                 *column,
+                source_file,
             ))
         }
         '.' => {
@@ -168,6 +179,7 @@ pub(crate) fn scan_iteration(
                 String::from(source_vec[start]),
                 *line,
                 *column,
+                source_file,
             ))
         }
         ';' => {
@@ -176,6 +188,7 @@ pub(crate) fn scan_iteration(
                 String::from(source_vec[start]),
                 *line,
                 *column,
+                source_file,
             ))
         }
         '*' => {
@@ -187,6 +200,7 @@ pub(crate) fn scan_iteration(
                 *line,
                 *column,
                 &source_vec,
+                source_file,
             );
         }
         '%' => {
@@ -195,6 +209,7 @@ pub(crate) fn scan_iteration(
                 String::from(source_vec[start]),
                 *line,
                 *column,
+                source_file,
             ))
         }
         '-' => {
@@ -206,6 +221,7 @@ pub(crate) fn scan_iteration(
                 *line,
                 *column,
                 &source_vec,
+                source_file,
             );
         }
         '+' => {
@@ -217,6 +233,7 @@ pub(crate) fn scan_iteration(
                 *line,
                 *column,
                 &source_vec,
+                source_file,
             );
         }
         '!' => {
@@ -228,6 +245,7 @@ pub(crate) fn scan_iteration(
                 *line,
                 *column,
                 &source_vec,
+                source_file,
             )
         }
         '=' => {
@@ -239,6 +257,7 @@ pub(crate) fn scan_iteration(
                 *line,
                 *column,
                 &source_vec,
+                source_file,
             );
         }
         '>' => {
@@ -250,6 +269,7 @@ pub(crate) fn scan_iteration(
                 *line,
                 *column,
                 &source_vec,
+                source_file,
             )
         }
         '<' => {
@@ -261,6 +281,7 @@ pub(crate) fn scan_iteration(
                 *line,
                 *column,
                 &source_vec,
+                source_file,
             )
         }
         '"' => {
@@ -277,7 +298,13 @@ pub(crate) fn scan_iteration(
             }
             poke += 1;
             let tmp = get_string(start + 1, poke - 1, source_vec);
-            token = Some(Token::new(TokenType::STRING, tmp, *line, *column));
+            token = Some(Token::new(
+                TokenType::STRING,
+                tmp,
+                *line,
+                *column,
+                source_file,
+            ));
         }
         '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0' => {
             // check decimal point
@@ -292,10 +319,22 @@ pub(crate) fn scan_iteration(
             }
             if source_vec[poke - 1] == '.' {
                 let tmp = get_string(start, poke - 1, source_vec);
-                token = Some(Token::new(TokenType::NUMBER, tmp, *line, *column));
+                token = Some(Token::new(
+                    TokenType::NUMBER,
+                    tmp,
+                    *line,
+                    *column,
+                    source_file,
+                ));
             } else {
                 let tmp = get_string(start, poke, source_vec);
-                token = Some(Token::new(TokenType::NUMBER, tmp, *line, *column));
+                token = Some(Token::new(
+                    TokenType::NUMBER,
+                    tmp,
+                    *line,
+                    *column,
+                    source_file,
+                ));
             }
         }
         'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o'
@@ -316,7 +355,7 @@ pub(crate) fn scan_iteration(
             } else {
                 token_type = TokenType::IDENTIFIER;
             }
-            token = Some(Token::new(token_type, tmp, *line, *column));
+            token = Some(Token::new(token_type, tmp, *line, *column, source_file));
         }
 
         // ignore
@@ -333,6 +372,7 @@ pub(crate) fn scan_iteration(
                 String::from("\\xa"),
                 *line,
                 *column,
+                source_file,
             ))
         }
         '/' => {
@@ -351,6 +391,7 @@ pub(crate) fn scan_iteration(
                     *line,
                     *column,
                     &source_vec,
+                    source_file,
                 );
             }
         }

@@ -19,7 +19,12 @@ use interpreter::parse_tree_unfinished::ParseTreeUnfinshed;
 use interpreter::scanner::scan_tokens;
 use interpreter::token::TokenArcVec;
 
+use runtime::run;
+
 use crate::err_lox::ErrorLox;
+
+// DEBUG: 
+use log::{debug, error, info, trace, warn};
 
 // TODO: remove collect and return iterator
 fn read_lines(filename: &str) -> Vec<String> {
@@ -50,6 +55,13 @@ pub fn run_file(path: &str) -> Result<(), ErrorLox> {
             println!("{:?}", parse_tree);
         }
     }
+
+    
+    info!("START EXECUTION!");
+    let tree = parse_tree.get_finished_node(path)?;
+    let tree = tree.unwrap();
+
+    println!("{:?}",  run(tree));
 
     Ok(())
 }

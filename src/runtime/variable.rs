@@ -1,26 +1,53 @@
 use crate::interpreter::AST_Node::AST_Node;
 use std::sync::{Arc, Mutex};
 
-pub enum VariableType {
+#[derive(Debug, Clone)]
+pub enum LoxVariableType {
     NUMBER(f64),
     BOOL(bool),
     STRING(String),
-    FUNCTION(fn(Arc<Mutex<AST_Node>>) -> Variable),
+    FUNCTION(fn(&LoxVariable) -> LoxVariable),
+    NONE,
 }
 
 // a function is also considered a variable
-pub struct Variable {
+#[derive(Debug)]
+pub struct LoxVariable {
     identifier: Option<String>,
-    variable_type: VariableType,
-    content: Option<Arc<Mutex<AST_Node>>>,
+    variable_type: LoxVariableType,
+    ref_node: Option<Arc<Mutex<AST_Node>>>,
 }
 
-impl Variable {
+impl LoxVariable {
+    pub(crate) fn new(
+        identifier: Option<String>,
+        variable_type: LoxVariableType,
+        ref_node: Option<Arc<Mutex<AST_Node>>>,
+    ) -> Self {
+        LoxVariable {
+            identifier,
+            variable_type,
+            ref_node,
+        }
+    }
+
     pub(crate) fn get_identifier(&self) -> Option<&str> {
         match &self.identifier {
             None => None,
             Some(a) => Some(a),
         }
+    }
+
+    pub(crate) fn get_ref_node(&self) -> Option<Arc<Mutex<AST_Node>>> {
+        self.ref_node.clone()
+    }
+
+    pub(crate) fn get_type(&self) -> LoxVariableType {
+        self.variable_type.clone()
+    }
+
+    pub(crate) fn get_content(&self) -> Option<Arc<Mutex<AST_Node>>> {
+        self.ref_node.clone()
     }
 
     pub(crate) fn is_lvalue(&self) -> bool {
@@ -29,5 +56,13 @@ impl Variable {
 
     pub(crate) fn is_rvalue(&self) -> bool {
         !self.is_lvalue()
+    }
+
+    pub(crate) fn empty() -> Self {
+        LoxVariable {
+            identifier: None,
+            variable_type: LoxVariableType::NONE,
+            ref_node: None,
+        }
     }
 }

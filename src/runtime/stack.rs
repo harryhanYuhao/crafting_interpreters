@@ -1,6 +1,6 @@
 // TODO: ERROR HANDLING
 
-use super::variable::{Variable, VariableType};
+use super::variable::{LoxVariable, LoxVariableType};
 use std::collections::HashMap;
 
 /// Implementing a mock stack
@@ -15,11 +15,11 @@ use std::collections::HashMap;
 ///
 /// Upon leaving a scope, the last map of stack.content is popped.
 struct Stack {
-    content: Vec<HashMap<String, Variable>>,
+    content: Vec<HashMap<String, LoxVariable>>,
 }
 
 impl Stack {
-    pub(crate) fn pop_scope(&mut self) -> Option<HashMap<String, Variable>> {
+    pub(crate) fn pop_scope(&mut self) -> Option<HashMap<String, LoxVariable>> {
         self.content.pop()
     }
 
@@ -27,7 +27,7 @@ impl Stack {
         self.content.push(HashMap::new());
     }
 
-    pub(crate) fn push(&mut self, v: Variable) {
+    pub(crate) fn push(&mut self, v: LoxVariable) {
         if v.is_rvalue() {
             return;
         }
@@ -37,7 +37,7 @@ impl Stack {
         hashmap.insert(v.get_identifier().unwrap().to_string(), v);
     }
 
-    pub(crate) fn get(&self, identifier: &str) -> Option<&Variable> {
+    pub(crate) fn get(&self, identifier: &str) -> Option<&LoxVariable> {
         for maps in self.content.iter().rev() {
             match maps.get(identifier) {
                 Some(a) => return Some(a),

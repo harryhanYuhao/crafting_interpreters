@@ -194,12 +194,13 @@ impl TokenType {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
     pub line: usize, // starts from 1, the line number of the token
     pub column: usize, // starts from 1, the column number of the token
+    pub source_file: String,
 }
 
 impl fmt::Debug for Token {
@@ -214,12 +215,17 @@ impl fmt::Debug for Token {
 
 
 impl Token {
-    pub fn new(token_type: TokenType, lexeme: String, line: usize, column: usize) -> Token {
+    pub fn set_source_file(&mut self, str: &str) {
+        self.source_file = str.into();
+    }
+
+    pub fn new(token_type: TokenType, lexeme: String, line: usize, column: usize, source: &str) -> Token {
         Token {
             token_type,
             lexeme,
             line,
             column,
+            source_file: source.into(),
         }
     }
     
@@ -228,7 +234,8 @@ impl Token {
             token_type: TokenType::DUMMY,
             lexeme: String::new(),
             line: 0,
-            column: 0
+            column: 0,
+            source_file: String::new(),
         }
     }
 
@@ -238,6 +245,7 @@ impl Token {
             lexeme: String::from("DUMMY"),
             line: 0,
             column: 0,
+            source_file: String::new(),
         }
     }
 

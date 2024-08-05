@@ -67,6 +67,8 @@ impl ErrorLox {
         }
     }
 
+    // pub fn from_lox_variable
+
     pub fn from_arc_mutex_token(
         token: Arc<Mutex<Token>>,
         description: &str,
