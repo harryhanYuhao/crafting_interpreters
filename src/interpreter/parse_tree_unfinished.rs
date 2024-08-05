@@ -59,15 +59,11 @@ impl ParseTreeUnfinshed {
     }
 
     // TODO: How to properly identify the tree is finished parsing
-    pub fn get_finished_node(
-        &self,
-        source_file: &str,
-    ) -> Result<Option<Arc<Mutex<AST_Node>>>, ErrorLox> {
+    pub fn get_finished_node(&self) -> Result<Option<Arc<Mutex<AST_Node>>>, ErrorLox> {
         if self.content.len() > 1 {
             return Err(ErrorLox::from_arc_mutex_ast_node(
                 self[0].clone(),
                 "Internal Error: Parse Tree is unfinished when calling get_finished_node",
-                source_file,
             ));
         }
         if self.content.len() == 1 {

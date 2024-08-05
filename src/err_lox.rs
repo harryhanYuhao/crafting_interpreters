@@ -3,6 +3,7 @@ use std::fmt;
 
 use crate::interpreter::token::Token;
 use crate::interpreter::AST_Node::AST_Node;
+use crate::runtime::variable::LoxVariable;
 use clap::error::ErrorKind;
 use colored::*;
 use std::convert::From;
@@ -54,10 +55,11 @@ impl ErrorLox {
         }
     }
 
-    pub fn from_token(token: &Token, description: &str, filename: &str) -> Self {
+    // TODO: remove filename, as token already has it
+    pub fn from_token(token: &Token, description: &str) -> Self {
         let column = token.column;
         let row = token.line;
-        let source = Source::from_filename(filename);
+        let source = Source::from_filename(&token.source_file);
         ErrorLox {
             description: description.to_string(),
             error_type: ErrorType::UnKnown,
@@ -67,29 +69,50 @@ impl ErrorLox {
         }
     }
 
-    // pub fn from_lox_variable
+    pub fn from_lox_variable(variable: &LoxVariable, description: &str) -> Self {
+        match variable.get_ref_node() {
+            None => {
+                return ErrorLox {
+                    description: description.to_string(),
+                    error_type: ErrorType::UnKnown,
+                    row: 0,
+                    column: 0,
+                    source: Source::FileName("UNKNOWN".into()),
+                }
+            }
+            Some(node) => {
+                let token = AST_Node::get_token_from_arc(node);
+                let ref_token = token.lock().unwrap();
+                return ErrorLox {
+                    description: description.to_string(),
+                    error_type: ErrorType::UnKnown,
+                    row: ref_token.line,
+                    column: ref_token.column,
+                    source: Source::from_filename(&ref_token.source_file),
+                };
+            }
+        }
+    }
 
     pub fn from_arc_mutex_token(
         token: Arc<Mutex<Token>>,
         description: &str,
-        filename: &str,
     ) -> Self {
         let tmp = token.lock().unwrap();
-        ErrorLox::from_token(&tmp, description, filename)
+        ErrorLox::from_token(&tmp, description)
     }
 
-    pub fn from_ast_node(node: &AST_Node, description: &str, filename: &str) -> Self {
+    pub fn from_ast_node(node: &AST_Node, description: &str) -> Self {
         let token = node.get_token();
-        ErrorLox::from_arc_mutex_token(token, description, filename)
+        ErrorLox::from_arc_mutex_token(token, description)
     }
 
     pub fn from_arc_mutex_ast_node(
         node: Arc<Mutex<AST_Node>>,
         description: &str,
-        filename: &str,
     ) -> Self {
         let node = node.lock().unwrap();
-        ErrorLox::from_ast_node(&node, description, filename)
+        ErrorLox::from_ast_node(&node, description)
     }
 
     pub fn panic(&self) {
