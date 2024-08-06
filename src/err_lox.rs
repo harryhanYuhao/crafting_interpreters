@@ -3,7 +3,7 @@ use std::fmt;
 
 use crate::interpreter::token::Token;
 use crate::interpreter::AST_Node::AST_Node;
-use crate::runtime::variable::LoxVariable;
+use crate::runtime::lox_variable::LoxVariable;
 use clap::error::ErrorKind;
 use colored::*;
 use std::convert::From;

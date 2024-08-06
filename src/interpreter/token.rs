@@ -20,9 +20,9 @@ pub enum TokenType {
     STMT_SEP, // statement separator, ; and new line
     SLASH,    // copulative
     SLASH_EQUAL,
-    STAR,     // copulative
+    STAR, // copulative
     STAR_EQUAL,
-    PERCENT,  // copulative
+    PERCENT, // copulative
     //One or two character tokens.
     PLUS,
     PLUS_EQUAL,
@@ -58,7 +58,7 @@ pub enum TokenType {
     WHILE,
     EOF,
     // Dummy Token
-    DUMMY
+    DUMMY,
 }
 
 impl fmt::Debug for TokenType {
@@ -125,11 +125,11 @@ static TOKEN_TYPE_LIST: [TokenType; 45] = [
     TokenType::COMMA,
     TokenType::DOT,
     TokenType::STMT_SEP,
-    TokenType::SLASH,   // copulative
-    TokenType::SLASH_EQUAL,   // copulative
-    TokenType::STAR,    // copulative
-    TokenType::STAR_EQUAL,    // copulative
-    TokenType::PERCENT, // copulative
+    TokenType::SLASH,       // copulative
+    TokenType::SLASH_EQUAL, // copulative
+    TokenType::STAR,        // copulative
+    TokenType::STAR_EQUAL,  // copulative
+    TokenType::PERCENT,     // copulative
     TokenType::PLUS,
     TokenType::PLUS_EQUAL,
     TokenType::MINUS, // copulative
@@ -198,7 +198,7 @@ impl TokenType {
 pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
-    pub line: usize, // starts from 1, the line number of the token
+    pub line: usize,   // starts from 1, the line number of the token
     pub column: usize, // starts from 1, the column number of the token
     pub source_file: String,
 }
@@ -213,13 +213,18 @@ impl fmt::Debug for Token {
     }
 }
 
-
 impl Token {
     pub fn set_source_file(&mut self, str: &str) {
         self.source_file = str.into();
     }
 
-    pub fn new(token_type: TokenType, lexeme: String, line: usize, column: usize, source: &str) -> Token {
+    pub fn new(
+        token_type: TokenType,
+        lexeme: String,
+        line: usize,
+        column: usize,
+        source: &str,
+    ) -> Token {
         Token {
             token_type,
             lexeme,
@@ -228,9 +233,9 @@ impl Token {
             source_file: source.into(),
         }
     }
-    
+
     pub fn dummy() -> Self {
-        Token{
+        Token {
             token_type: TokenType::DUMMY,
             lexeme: String::new(),
             line: 0,
@@ -249,9 +254,22 @@ impl Token {
         }
     }
 
+    pub(crate) fn get_lexeme(&self) -> String {
+        self.lexeme.clone()
+    }
+
+    pub(crate) fn get_lexeme_from_arc(input: Arc<Mutex<Token>>) -> String {
+        let token_ref = input.lock().unwrap();
+        token_ref.get_lexeme()
+    }
+
     pub(crate) fn get_token_type_from_arc(input: Arc<Mutex<Token>>) -> TokenType {
         let token = input.lock().unwrap();
         token.token_type
+    }
+
+    pub(crate) fn get_token_type(&self) -> TokenType {
+        self.token_type.clone()
     }
 }
 

@@ -1,8 +1,8 @@
 use crate::err_lox::ErrorLox;
 use crate::interpreter::AST_Node::AST_Node;
-use crate::runtime::variable::{LoxVariable, LoxVariableType};
+use crate::runtime::lox_variable::{LoxVariable, LoxVariableType};
 
-pub fn to_string(variable: &LoxVariable) -> Result<LoxVariable, ErrorLox> {
+fn to_string_runtime(variable: &LoxVariable) -> String {
     let mut string = String::new();
     match variable.get_type() {
         LoxVariableType::NONE => {}
@@ -18,7 +18,23 @@ pub fn to_string(variable: &LoxVariable) -> Result<LoxVariable, ErrorLox> {
         LoxVariableType::STRING(s) => {
             string = s.clone();
         }
+        LoxVariableType::TUPLE(t) => {
+            let mut res = String::new();
+            for i in t.iter() {
+                let tmp = to_string_runtime(&i);
+                res.push_str(&tmp);
+                res.push_str(", ");
+            }
+            res.pop();
+            res.pop();
+            string = res;
+        }
     }
+    string
+}
+
+pub fn lox_to_string(variable: &LoxVariable) -> Result<LoxVariable, ErrorLox> {
+    let string = to_string_runtime(variable);
 
     Ok(LoxVariable::new(
         None,

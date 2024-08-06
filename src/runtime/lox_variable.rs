@@ -7,11 +7,12 @@ pub enum LoxVariableType {
     BOOL(bool),
     STRING(String),
     FUNCTION(fn(&LoxVariable) -> LoxVariable),
+    TUPLE(Vec<Box<LoxVariable>>),
     NONE,
 }
 
 // a function is also considered a variable
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LoxVariable {
     identifier: Option<String>,
     variable_type: LoxVariableType,

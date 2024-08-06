@@ -93,7 +93,7 @@ fn real_parse(tree: &mut ParseTreeUnfinshed) -> ParseState {
         return ParseState::Finished;
     }
 
-    HandleParseState!(parse_parenthesis(tree ));
+    HandleParseState!(parse_parenthesis(tree));
     HandleParseState!(parse_braces(tree));
     HandleParseState!(parse_function_definition(tree));
     HandleParseState!(parse_function_eval(tree));

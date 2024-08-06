@@ -1,6 +1,6 @@
 // TODO: ERROR HANDLING
 
-use super::variable::{LoxVariable, LoxVariableType};
+use super::lox_variable::{LoxVariable, LoxVariableType};
 use std::collections::HashMap;
 
 /// Implementing a mock stack
