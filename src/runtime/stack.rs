@@ -1,7 +1,8 @@
-// TODO: ERROR HANDLING
-
 use super::lox_variable::{LoxVariable, LoxVariableType};
 use std::collections::HashMap;
+use std::sync::atomic::AtomicBool;
+
+static mut STACK_INITIALISED: AtomicBool = AtomicBool::new(false);
 
 /// Implementing a mock stack
 ///
@@ -46,4 +47,16 @@ impl Stack {
         }
         None
     }
+
+    fn init() -> Self {
+        let mut stack = Stack { content: vec![] };
+        stack.new_scope();
+        stack
+    }
+
+
+    // Other part of the crate call this method to obtain the stack
+    // pub(crate) fn stack() -> &Self {
+    //
+    // }
 }

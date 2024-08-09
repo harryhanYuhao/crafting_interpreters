@@ -19,7 +19,7 @@ fn to_string_runtime(variable: &LoxVariable) -> String {
             string = s.clone();
         }
         LoxVariableType::TUPLE(t) => {
-            let mut res = String::new();
+            let mut res = String::from("(");
             for i in t.iter() {
                 let tmp = to_string_runtime(&i);
                 res.push_str(&tmp);
@@ -27,6 +27,7 @@ fn to_string_runtime(variable: &LoxVariable) -> String {
             }
             res.pop();
             res.pop();
+            res.push(')');
             string = res;
         }
     }

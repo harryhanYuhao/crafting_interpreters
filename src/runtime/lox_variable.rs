@@ -51,6 +51,30 @@ impl LoxVariable {
         self.ref_node.clone()
     }
 
+    /// Return some(len) if the variable is a tuple, len is the length of the tuple,
+    /// Return none if the variable is not a tuple
+    pub(crate) fn get_tuple_length(&self) -> Option<usize> {
+        match &self.variable_type {
+            LoxVariableType::TUPLE(vec) => {
+                return Some(vec.len());
+            }
+            _ => {
+                return None;
+            }
+        }
+    }
+    
+    pub(crate) fn get_tuple_content(&self) -> Option<Vec<Box<LoxVariable>>> {
+        match &self.variable_type {
+            LoxVariableType::TUPLE(vec) => {
+                return Some(vec.clone());
+            }
+            _ => {
+                return None;
+            }
+        }
+    }
+
     pub(crate) fn is_lvalue(&self) -> bool {
         self.identifier.is_some()
     }
