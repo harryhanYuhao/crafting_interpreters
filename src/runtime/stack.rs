@@ -1,8 +1,14 @@
-use super::lox_variable::{LoxVariable, LoxVariableType};
 use std::collections::HashMap;
 use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, Mutex};
 
-static mut STACK_INITIALISED: AtomicBool = AtomicBool::new(false);
+use super::lox_variable::{LoxVariable, LoxVariableType};
+use crate::runtime::lox_std::get_std;
+
+lazy_static! {
+    static ref STACK: Arc<Mutex<Stack>> = Arc::new(Mutex::new(Stack { content: vec![] }));
+    static ref STACK_INIT: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
+}
 
 /// Implementing a mock stack
 ///
@@ -15,7 +21,7 @@ static mut STACK_INITIALISED: AtomicBool = AtomicBool::new(false);
 /// Any new variables in the scope are stored in the newest map.
 ///
 /// Upon leaving a scope, the last map of stack.content is popped.
-struct Stack {
+pub(crate) struct Stack {
     content: Vec<HashMap<String, LoxVariable>>,
 }
 
@@ -29,6 +35,7 @@ impl Stack {
     }
 
     pub(crate) fn push(&mut self, v: LoxVariable) {
+        // TODO: ERROR HANDLING
         if v.is_rvalue() {
             return;
         }
@@ -48,15 +55,38 @@ impl Stack {
         None
     }
 
-    fn init() -> Self {
-        let mut stack = Stack { content: vec![] };
-        stack.new_scope();
-        stack
+    fn init() {
+        let mut stack_init = STACK_INIT.lock().unwrap();
+        if *stack_init {
+            return;
+        }
+        let mut stack = STACK.lock().unwrap();
+        (*stack).new_scope();
+        for i in get_std() {
+            &(*stack).push(i);
+        }
+        *stack_init = true;
     }
 
-
     // Other part of the crate call this method to obtain the stack
-    // pub(crate) fn stack() -> &Self {
-    //
-    // }
+    pub(crate) fn stack() -> Arc<Mutex<Stack>> {
+        Stack::init();
+
+        STACK.clone()
+    }
 }
+
+// TODO: how to properly return this reference?
+//
+// pub(crate) fn get(id: &str) -> Option<&LoxVariable> {
+//     Stack::init();
+//     let stack = STACK.lock().unwrap();
+//     match &stack.get(id){
+//         None => {
+//             return None
+//         }
+//         Some(a) => {
+//             return Some(*a)
+//         }
+//     }
+// }

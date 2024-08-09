@@ -63,11 +63,22 @@ impl LoxVariable {
             }
         }
     }
-    
+
     pub(crate) fn get_tuple_content(&self) -> Option<Vec<Box<LoxVariable>>> {
         match &self.variable_type {
             LoxVariableType::TUPLE(vec) => {
                 return Some(vec.clone());
+            }
+            _ => {
+                return None;
+            }
+        }
+    }
+
+    pub(crate) fn get_function(&self) -> Option<fn(&LoxVariable) -> LoxVariable> {
+        match &self.variable_type {
+            LoxVariableType::FUNCTION(f) => {
+                return Some(*f);
             }
             _ => {
                 return None;

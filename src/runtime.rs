@@ -88,15 +88,39 @@ fn eval_expr(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
                     node.clone(),
                     "Expected only on children, Likely a parsing error",
                 ));
-            } 
-            else if AST_Node::get_AST_Type_from_arc(children[0].clone())!= AST_Type::Expr(ExprType::Paren) {
+            } else if AST_Node::get_AST_Type_from_arc(children[0].clone())
+                != AST_Type::Expr(ExprType::Paren)
+            {
                 return Err(ErrorLox::from_arc_mutex_ast_node(
                     node.clone(),
                     "Expected expr(paren), likely a parsing error",
                 ));
             }
-            let res = eval_expr(children[0].clone())?;
-            print_lox(&res)?;
+            let function_input = eval_expr(children[0].clone())?;
+            // print_lox(&function_input)?;
+            let stack = stack::Stack::stack();
+            let stack = stack.lock().unwrap();
+            let function: &LoxVariable;
+            match stack.get("print") {
+                None => {
+                    return Err(ErrorLox::from_arc_mutex_ast_node(
+                        node.clone(),
+                        "No such lvalue found in stack",
+                    ));
+                }
+                Some(a) => {
+                    function = a;
+                }
+            }
+
+            match function.get_function() {
+                None => {
+                    return Err(ErrorLox::from_arc_mutex_ast_node(node.clone(), "Such a lvalue is not function!"));
+                }
+                Some(f) => {
+                    return Ok(f(&function_input));
+                }
+            }
         }
         AST_Type::Expr(ExprType::Paren) => {
             let children = AST_Node::arc_mutex_get_children(node.clone());

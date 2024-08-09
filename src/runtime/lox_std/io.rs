@@ -3,7 +3,7 @@ use crate::runtime::lox_std::conversion;
 use crate::runtime::lox_variable::{LoxVariable, LoxVariableType};
 
 pub(crate) fn check_function_input(input: &LoxVariable, length: usize) -> Result<(), ErrorLox> {
-    if input.get_tuple_length() != Some(length){
+    if input.get_tuple_length() != Some(length) {
         return Err(ErrorLox::from_lox_variable(
             input,
             "Expected Tuple. Likely a Parser Error",
@@ -14,7 +14,7 @@ pub(crate) fn check_function_input(input: &LoxVariable, length: usize) -> Result
 
 pub(crate) fn print_lox(input: &LoxVariable) -> Result<LoxVariable, ErrorLox> {
     check_function_input(input, 1)?;
-    
+
     let content = input.get_tuple_content().unwrap();
     let string = conversion::lox_to_string(&content[0])?;
     match string.get_type() {
@@ -29,4 +29,24 @@ pub(crate) fn print_lox(input: &LoxVariable) -> Result<LoxVariable, ErrorLox> {
         }
     }
     Ok(LoxVariable::empty())
+}
+
+fn print(input: &LoxVariable) -> LoxVariable {
+    match print_lox(input) {
+        Err(e) => {
+            e.panic();
+        }
+        _ => {}
+    }
+    LoxVariable::empty()
+}
+
+pub(crate) fn get_all() -> Vec<LoxVariable> {
+    let mut ret = Vec::new();
+    ret.push(LoxVariable::new(
+        Some("print".to_string()),
+        LoxVariableType::FUNCTION(print),
+        None,
+    ));
+    ret
 }
