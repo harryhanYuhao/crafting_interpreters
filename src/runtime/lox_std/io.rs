@@ -45,7 +45,7 @@ pub(crate) fn get_all() -> Vec<LoxVariable> {
     let mut ret = Vec::new();
     ret.push(LoxVariable::new(
         Some("print".to_string()),
-        LoxVariableType::FUNCTION(print),
+        LoxVariableType::STD_FUNCTION(print),
         None,
     ));
     ret

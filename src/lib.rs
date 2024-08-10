@@ -14,8 +14,8 @@ use std::fs::read_to_string;
 use std::io::{self, prelude::*, stdout, BufReader, Write};
 use std::sync::{Arc, Mutex};
 
-use interpreter::parser::{parse, ParseState};
 use interpreter::parse_tree_unfinished::ParseTreeUnfinshed;
+use interpreter::parser::{parse, ParseState};
 use interpreter::scanner::scan_tokens;
 use interpreter::token::TokenArcVec;
 
@@ -23,7 +23,7 @@ use runtime::run;
 
 use crate::err_lox::ErrorLox;
 
-// DEBUG: 
+// DEBUG:
 use log::{debug, error, info, trace, warn};
 
 // TODO: remove collect and return iterator
@@ -56,12 +56,11 @@ pub fn run_file(path: &str) -> Result<(), ErrorLox> {
         }
     }
 
-    
     info!("START EXECUTION!");
     let tree = parse_tree.get_finished_node()?;
     let tree = tree.unwrap();
 
-    println!("{:?}",  run(tree));
+    let _ = run(tree);
 
     Ok(())
 }

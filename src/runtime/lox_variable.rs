@@ -1,12 +1,16 @@
 use crate::interpreter::AST_Node::AST_Node;
 use std::sync::{Arc, Mutex};
+use std::fmt;
 
+//
 #[derive(Debug, Clone)]
 pub enum LoxVariableType {
     NUMBER(f64),
     BOOL(bool),
     STRING(String),
-    FUNCTION(fn(&LoxVariable) -> LoxVariable),
+    #[allow(non_camel_case_types)]
+    // STD_Function, the input is expected to be a tuple
+    STD_FUNCTION(fn(&LoxVariable) -> LoxVariable),
     TUPLE(Vec<Box<LoxVariable>>),
     NONE,
 }
@@ -77,7 +81,7 @@ impl LoxVariable {
 
     pub(crate) fn get_function(&self) -> Option<fn(&LoxVariable) -> LoxVariable> {
         match &self.variable_type {
-            LoxVariableType::FUNCTION(f) => {
+            LoxVariableType::STD_FUNCTION(f) => {
                 return Some(*f);
             }
             _ => {
@@ -100,5 +104,40 @@ impl LoxVariable {
             variable_type: LoxVariableType::NONE,
             ref_node: None,
         }
+    }
+
+    pub(crate) fn empty_from_arc_mutex_ast_node(node: Arc<Mutex<AST_Node>>) -> Self {
+        LoxVariable {
+            identifier: None,
+            variable_type: LoxVariableType::NONE,
+            ref_node: Some(node),
+        }
+    }
+
+    pub(crate) fn to_tuple(&self) -> Self {
+        match self.variable_type {
+            LoxVariableType::TUPLE(_) => {
+                return self.clone();
+            }
+            _ => {
+                return LoxVariable {
+                    identifier: None, 
+                    variable_type: LoxVariableType::TUPLE(vec![Box::new(self.clone())]),
+                    ref_node: None,
+                }
+            }
+        }
+    }
+}
+
+
+impl fmt::Display for LoxVariable {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let id: String;
+        match &self.identifier{
+            None => {id = "NONAME".into()},
+            Some(s) => {id = s.clone()},
+        }
+        write!(f, "{}: {:?}", id, self.variable_type)
     }
 }

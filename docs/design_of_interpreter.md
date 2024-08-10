@@ -94,3 +94,9 @@ The finshed node is a tree with all token arrange appropriately for execution. I
 It is no longer modified, and all information required for execution are stored in the field `token` and `AST_Type`.
 
 ## Runtime
+
+### Function call 
+
+There are two kinds of function in lox, std function and user defined function. Both of the function are stored as varaibles in the stack.
+
+

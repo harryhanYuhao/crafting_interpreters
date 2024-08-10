@@ -1,3 +1,9 @@
+/// STD functions
+///
+/// signature: fn(&LoxVariable) -> LoxVariable
+/// Moreover, the input is expected to be a tuple
+///
+/// User defined functions behaves differently
 pub mod conversion;
 pub mod io;
 

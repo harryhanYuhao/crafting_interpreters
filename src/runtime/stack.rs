@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
+use log::debug;
+
 use super::lox_variable::{LoxVariable, LoxVariableType};
 use crate::runtime::lox_std::get_std;
 
@@ -21,6 +23,7 @@ lazy_static! {
 /// Any new variables in the scope are stored in the newest map.
 ///
 /// Upon leaving a scope, the last map of stack.content is popped.
+#[derive(Debug)]
 pub(crate) struct Stack {
     content: Vec<HashMap<String, LoxVariable>>,
 }
@@ -63,7 +66,7 @@ impl Stack {
         let mut stack = STACK.lock().unwrap();
         (*stack).new_scope();
         for i in get_std() {
-            &(*stack).push(i);
+            (*stack).push(i);
         }
         *stack_init = true;
     }
@@ -76,17 +79,35 @@ impl Stack {
     }
 }
 
-// TODO: how to properly return this reference?
-//
-// pub(crate) fn get(id: &str) -> Option<&LoxVariable> {
-//     Stack::init();
-//     let stack = STACK.lock().unwrap();
-//     match &stack.get(id){
-//         None => {
-//             return None
-//         }
-//         Some(a) => {
-//             return Some(*a)
-//         }
+// let function: &LoxVariable;
+// let stack = stack::Stack::stack();
+// let stack = stack.lock().unwrap();
+// match stack.get("print") {
+//     None => {
+//         return Err(ErrorLox::from_arc_mutex_ast_node(
+//             node.clone(),
+//             &format!("No {} found in stack", "print"),
+//         ));
+//     }
+//     Some(a) => {
+//         function = a;
 //     }
 // }
+
+macro_rules! HandleParseState {
+    ($variable:expr, $identifier:expr) => {
+        let __stack = crate::runtime::stack::Stack::stack();
+        let __stack = __stack.lock().unwrap();
+        match __stack.get($identifier) {
+            None => {
+                return Err(crate::ErrorLox::from_arc_mutex_ast_node(
+                    node.clone(),
+                    &format!("No {} found in stack", $identifier),
+                ));
+            }
+            Some(a) => {
+                $variable = a;
+            }
+        }
+    };
+}

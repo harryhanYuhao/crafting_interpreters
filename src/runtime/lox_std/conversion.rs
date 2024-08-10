@@ -12,7 +12,7 @@ fn to_string_runtime(variable: &LoxVariable) -> String {
         LoxVariableType::NUMBER(a) => {
             string = format!("{a}");
         }
-        LoxVariableType::FUNCTION(a) => {
+        LoxVariableType::STD_FUNCTION(a) => {
             string = format!("{a:?}");
         }
         LoxVariableType::STRING(s) => {

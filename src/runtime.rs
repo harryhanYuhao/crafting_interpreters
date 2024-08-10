@@ -53,6 +53,15 @@ fn eval_lone_expr(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
                 Some(node.clone()),
             ));
         }
+        TokenType::STRING => {
+            return Ok(LoxVariable::new(
+                None,
+                LoxVariableType::STRING(token.get_lexeme().clone()),
+                None,
+            ))
+        }
+        TokenType::TRUE => return Ok(LoxVariable::new(None, LoxVariableType::BOOL(true), None)),
+        TokenType::FALSE => return Ok(LoxVariable::new(None, LoxVariableType::BOOL(false), None)),
         _ => {}
     }
 
@@ -81,7 +90,6 @@ fn eval_expr(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
             return eval_expr_normal(node.clone());
         }
         AST_Type::Expr(ExprType::Function) => {
-            // TODO: IMPLEMENT STACK
             let children = AST_Node::arc_mutex_get_children(node.clone());
             if children.len() != 1 {
                 return Err(ErrorLox::from_arc_mutex_ast_node(
@@ -97,15 +105,16 @@ fn eval_expr(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
                 ));
             }
             let function_input = eval_expr(children[0].clone())?;
-            // print_lox(&function_input)?;
+            let function_input = function_input.to_tuple();
+
+            let function: &LoxVariable;
             let stack = stack::Stack::stack();
             let stack = stack.lock().unwrap();
-            let function: &LoxVariable;
             match stack.get("print") {
                 None => {
                     return Err(ErrorLox::from_arc_mutex_ast_node(
                         node.clone(),
-                        "No such lvalue found in stack",
+                        &format!("No {} found in stack", "print"),
                     ));
                 }
                 Some(a) => {
@@ -115,7 +124,10 @@ fn eval_expr(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
 
             match function.get_function() {
                 None => {
-                    return Err(ErrorLox::from_arc_mutex_ast_node(node.clone(), "Such a lvalue is not function!"));
+                    return Err(ErrorLox::from_arc_mutex_ast_node(
+                        node.clone(),
+                        &format!("{} is not a function", "print"),
+                    ));
                 }
                 Some(f) => {
                     return Ok(f(&function_input));
@@ -123,16 +135,27 @@ fn eval_expr(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
             }
         }
         AST_Type::Expr(ExprType::Paren) => {
+            // By parsing rule all expr(paren) will have at most one child, and the
+            // child shall be expression
             let children = AST_Node::arc_mutex_get_children(node.clone());
-            let mut in_vec: Vec<Box<LoxVariable>> = Vec::new();
-            for i in children.iter() {
-                in_vec.push(Box::new(eval_expr(i.clone())?));
+            if children.len() == 0 {
+                return Ok(LoxVariable::empty_from_arc_mutex_ast_node(node.clone()));
+            } else if children.len() == 1 {
+                let a = eval_expr(children[0].clone());
+                match &a {
+                    // DEBUG: line
+                    Ok(o) => {
+                        // println!("{o}");
+                    }
+                    Err(e) => {}
+                }
+                return a;
+            } else {
+                return Err(ErrorLox::from_arc_mutex_ast_node(
+                    node.clone(),
+                    "Expr(Paren) has more than one children; likely a parsing error",
+                ));
             }
-            return Ok(LoxVariable::new(
-                None,
-                LoxVariableType::TUPLE(in_vec),
-                Some(node.clone()),
-            ));
         }
         _ => {}
     }

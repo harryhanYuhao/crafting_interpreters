@@ -475,6 +475,9 @@ fn parse_function_eval(tree: &mut ParseTreeUnfinshed) -> ParseState {
             && AST_Node::get_AST_Type_from_arc(tree[i + 1].clone())
                 == AST_Type::Expr(ExprType::Paren)
         {
+            // tree[i + 1] is paren. 
+            // The paren struct itself shall hold at most one child, and thus is redundant
+            // and shall be removed. 
             AST_Node::arc_mutex_append_child(tree[i].clone(), tree[i + 1].clone());
             AST_Node::set_arc_mutex_AST_Type(tree[i].clone(), AST_Type::Expr(ExprType::Function));
             tree.remove(i + 1);

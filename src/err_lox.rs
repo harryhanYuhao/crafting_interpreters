@@ -9,6 +9,7 @@ use colored::*;
 use std::convert::From;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 // DEBUG:
@@ -24,6 +25,7 @@ pub enum ErrorType {
 
 #[derive(Debug)]
 pub enum Source {
+    NoSource,
     FileName(String),
     Stdin,
 }
@@ -70,6 +72,7 @@ impl ErrorLox {
     }
 
     pub fn from_lox_variable(variable: &LoxVariable, description: &str) -> Self {
+        // TODO: UNFINISHED
         match variable.get_ref_node() {
             None => {
                 return ErrorLox {
@@ -77,7 +80,7 @@ impl ErrorLox {
                     error_type: ErrorType::UnKnown,
                     row: 0,
                     column: 0,
-                    source: Source::FileName("UNKNOWN".into()),
+                    source: Source::NoSource,
                 }
             }
             Some(node) => {
@@ -94,10 +97,7 @@ impl ErrorLox {
         }
     }
 
-    pub fn from_arc_mutex_token(
-        token: Arc<Mutex<Token>>,
-        description: &str,
-    ) -> Self {
+    pub fn from_arc_mutex_token(token: Arc<Mutex<Token>>, description: &str) -> Self {
         let tmp = token.lock().unwrap();
         ErrorLox::from_token(&tmp, description)
     }
@@ -107,15 +107,31 @@ impl ErrorLox {
         ErrorLox::from_arc_mutex_token(token, description)
     }
 
-    pub fn from_arc_mutex_ast_node(
-        node: Arc<Mutex<AST_Node>>,
-        description: &str,
-    ) -> Self {
+    pub fn from_arc_mutex_ast_node(node: Arc<Mutex<AST_Node>>, description: &str) -> Self {
         let node = node.lock().unwrap();
         ErrorLox::from_ast_node(&node, description)
     }
 
     pub fn panic(&self) {
+        // TODO: WHAT IS A BETTER MAY TO HANDLE THIS?
+        match &self.source {
+            Source::Stdin => {
+                panic!("ERROR: {}", self.description);
+            }
+            Source::FileName(f) => match Path::new(&f).try_exists() {
+                Ok(exists) => {
+                    if !exists {
+                        panic!("ERROR: {}", self.description);
+                    }
+                }
+                _ => {
+                    panic!("ERROR: {}", self.description);
+                }
+            },
+            Source::NoSource => {
+                panic!("ERROR: {}", self.description);
+            }
+        }
         println!("{}", self);
         std::process::exit(1);
     }
@@ -134,6 +150,10 @@ impl fmt::Display for ErrorLox {
         let source_name: String = match &self.source {
             Source::FileName(name) => format!("{}", name.underline()),
             Source::Stdin => "stdin".underline().to_string(),
+            // TODO: needs better handling
+            Source::NoSource => {
+                panic!("{}", self.description);
+            }
         };
 
         // error!("{:?}", self);
