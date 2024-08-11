@@ -3,10 +3,18 @@ use crate::runtime::lox_std::conversion;
 use crate::runtime::lox_variable::{LoxVariable, LoxVariableType};
 
 pub(crate) fn check_function_input(input: &LoxVariable, length: usize) -> Result<(), ErrorLox> {
-    if input.get_tuple_length() != Some(length) {
+    if let Some(hint_len) = input.get_tuple_length() {
+        if hint_len != length {
+            return Err(ErrorLox::from_lox_variable(
+                input,
+                &format!("Expected {length} arguments, found {hint_len}"),
+            ));
+        }
+    } else {
+        // In such case input is not a tuple
         return Err(ErrorLox::from_lox_variable(
             input,
-            "Expected Tuple. Likely a Parser Error",
+            &format!("Expected Tuple. Likely a parsing error"),
         ));
     }
     Ok(())

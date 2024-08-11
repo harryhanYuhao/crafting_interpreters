@@ -2,12 +2,12 @@
 use log::{debug, error};
 pub mod lox_std;
 pub mod lox_variable;
+#[macro_use]
 pub mod stack;
 
 use crate::err_lox::ErrorLox;
 use crate::interpreter::token::{Token, TokenType};
 use crate::interpreter::AST_Node::{AST_Node, AST_Type, ExprType, StmtType};
-use lox_std::io::print_lox;
 use lox_variable::{LoxVariable, LoxVariableType};
 use std::sync::{Arc, Mutex};
 
@@ -84,6 +84,42 @@ fn eval_expr_normal(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox>
     Ok(LoxVariable::empty())
 }
 
+// the input node shall be expr(function)
+fn eval_expr_function(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
+    let children = AST_Node::arc_mutex_get_children(node.clone());
+    if children.len() != 1 {
+        return Err(ErrorLox::from_arc_mutex_ast_node(
+            node.clone(),
+            "Expected only one children, Likely a parsing error",
+        ));
+    } else if AST_Node::get_AST_Type_from_arc(children[0].clone())
+        != AST_Type::Expr(ExprType::Paren)
+    {
+        return Err(ErrorLox::from_arc_mutex_ast_node(
+            node.clone(),
+            "Expected expr(paren), likely a parsing error",
+        ));
+    }
+    let function_input = eval_expr(children[0].clone())?;
+    // function input must be tuple
+    let function_input = function_input.to_tuple();
+
+    let function: &LoxVariable;
+    stack_get!(function, "print", node);
+
+    match function.get_function() {
+        None => {
+            return Err(ErrorLox::from_arc_mutex_ast_node(
+                node.clone(),
+                &format!("{} is not a function", "print"),
+            ));
+        }
+        Some(f) => {
+            return Ok(f(&function_input));
+        }
+    }
+}
+
 fn eval_expr(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
     match AST_Node::get_AST_Type_from_arc(node.clone()) {
         AST_Type::Expr(ExprType::Normal) => {
@@ -104,23 +140,13 @@ fn eval_expr(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
                     "Expected expr(paren), likely a parsing error",
                 ));
             }
+            // get input
             let function_input = eval_expr(children[0].clone())?;
             let function_input = function_input.to_tuple();
 
+            // get lexeme, function name
             let function: &LoxVariable;
-            let stack = stack::Stack::stack();
-            let stack = stack.lock().unwrap();
-            match stack.get("print") {
-                None => {
-                    return Err(ErrorLox::from_arc_mutex_ast_node(
-                        node.clone(),
-                        &format!("No {} found in stack", "print"),
-                    ));
-                }
-                Some(a) => {
-                    function = a;
-                }
-            }
+            stack_get!(function, "print", node);
 
             match function.get_function() {
                 None => {

@@ -79,29 +79,22 @@ impl Stack {
     }
 }
 
-// let function: &LoxVariable;
-// let stack = stack::Stack::stack();
-// let stack = stack.lock().unwrap();
-// match stack.get("print") {
-//     None => {
-//         return Err(ErrorLox::from_arc_mutex_ast_node(
-//             node.clone(),
-//             &format!("No {} found in stack", "print"),
-//         ));
-//     }
-//     Some(a) => {
-//         function = a;
-//     }
-// }
-
-macro_rules! HandleParseState {
-    ($variable:expr, $identifier:expr) => {
+// This macro is solely used for getting a reference of loxvariable from the stack
+// $identifier must be $str
+// $variable must be &LoxVariable
+// $node must be the arc_mutex_ast_node, and shall be the node you obtain $variable from.
+//
+// This macro assigns to $variable the content of $identifier stored in the stack.
+//
+// If $variable is not found, return ErrorLox based on $node
+macro_rules! stack_get {
+    ($variable:expr, $identifier:expr, $node:expr) => {
         let __stack = crate::runtime::stack::Stack::stack();
         let __stack = __stack.lock().unwrap();
         match __stack.get($identifier) {
             None => {
                 return Err(crate::ErrorLox::from_arc_mutex_ast_node(
-                    node.clone(),
+                    $node.clone(),
                     &format!("No {} found in stack", $identifier),
                 ));
             }

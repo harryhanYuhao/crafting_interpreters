@@ -20,6 +20,8 @@ pub enum LoxVariableType {
 pub struct LoxVariable {
     identifier: Option<String>,
     variable_type: LoxVariableType,
+    // ref_node has two purposes:
+    // 1. get and parse the lexeme 2. error handling
     ref_node: Option<Arc<Mutex<AST_Node>>>,
 }
 
@@ -123,7 +125,7 @@ impl LoxVariable {
                 return LoxVariable {
                     identifier: None, 
                     variable_type: LoxVariableType::TUPLE(vec![Box::new(self.clone())]),
-                    ref_node: None,
+                    ref_node: self.ref_node.clone(),
                 }
             }
         }
