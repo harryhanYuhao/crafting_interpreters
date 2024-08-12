@@ -1,6 +1,6 @@
 use crate::interpreter::AST_Node::AST_Node;
-use std::sync::{Arc, Mutex};
 use std::fmt;
+use std::sync::{Arc, Mutex};
 
 //
 #[derive(Debug, Clone)]
@@ -81,23 +81,85 @@ impl LoxVariable {
         }
     }
 
-    pub(crate) fn get_function(&self) -> Option<fn(&LoxVariable) -> LoxVariable> {
-        match &self.variable_type {
-            LoxVariableType::STD_FUNCTION(f) => {
-                return Some(*f);
-            }
-            _ => {
-                return None;
-            }
-        }
-    }
-
     pub(crate) fn is_lvalue(&self) -> bool {
         self.identifier.is_some()
     }
 
     pub(crate) fn is_rvalue(&self) -> bool {
         !self.is_lvalue()
+    }
+
+    pub(crate) fn is_number(&self) -> bool {
+        match &self.variable_type {
+            LoxVariableType::NUMBER(_) => true,
+            _ => false,
+        }
+    }
+
+    pub(crate) fn get_number(&self) -> f64 {
+        match &self.variable_type {
+            LoxVariableType::NUMBER(n) => *n,
+            _ => panic!("LoxVariable::get_number called on a none number: Internal error"),
+        }
+    }
+
+    pub(crate) fn is_bool(&self) -> bool {
+        match &self.variable_type {
+            LoxVariableType::BOOL(_) => true,
+            _ => false,
+        }
+    }
+
+    pub(crate) fn get_bool(&self) -> bool {
+        match &self.variable_type {
+            LoxVariableType::BOOL(b) => *b,
+            _ => panic!("LoxVariable::get_bool called on a none bool: Internal error"),
+        }
+    }
+
+    pub(crate) fn is_string(&self) -> bool {
+        match &self.variable_type {
+            LoxVariableType::STRING(_) => true,
+            _ => false,
+        }
+    }
+
+    pub(crate) fn get_string(&self) -> String {
+        match &self.variable_type {
+            LoxVariableType::STRING(s) => s.clone(),
+            _ => panic!("LoxVariable::get_string called on a none string: Internal error"),
+        }
+    }
+
+    pub(crate) fn is_function(&self) -> bool {
+        match &self.variable_type {
+            LoxVariableType::STD_FUNCTION(_) => true,
+            _ => false,
+        }
+    }
+
+    pub(crate) fn get_function(&self) -> fn(&LoxVariable) -> LoxVariable {
+        match &self.variable_type {
+            LoxVariableType::STD_FUNCTION(f) => {
+                return *f;
+            }
+            _ => {
+                panic!("LoxVariable::get_function called on a none function: Internal error");
+            }
+        }
+    }
+    pub(crate) fn is_tuple(&self) -> bool {
+        match &self.variable_type {
+            LoxVariableType::TUPLE(_) => true,
+            _ => false,
+        }
+    }
+
+    pub(crate) fn is_none(&self) -> bool {
+        match &self.variable_type {
+            LoxVariableType::NONE => true,
+            _ => false,
+        }
     }
 
     pub(crate) fn empty() -> Self {
@@ -123,22 +185,22 @@ impl LoxVariable {
             }
             _ => {
                 return LoxVariable {
-                    identifier: None, 
+                    identifier: None,
                     variable_type: LoxVariableType::TUPLE(vec![Box::new(self.clone())]),
+                    // WARNING: MAY have circular dependency
                     ref_node: self.ref_node.clone(),
-                }
+                };
             }
         }
     }
 }
 
-
 impl fmt::Display for LoxVariable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let id: String;
-        match &self.identifier{
-            None => {id = "NONAME".into()},
-            Some(s) => {id = s.clone()},
+        match &self.identifier {
+            None => id = "NONAME".into(),
+            Some(s) => id = s.clone(),
         }
         write!(f, "{}: {:?}", id, self.variable_type)
     }

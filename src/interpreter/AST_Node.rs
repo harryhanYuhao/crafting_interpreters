@@ -326,6 +326,16 @@ impl AST_Node {
             children: Vec::new(),
         }
     }
+
+    pub(crate) fn get_token_lexeme(&self) -> String {
+        let token = self.token.lock().unwrap();
+        token.get_lexeme()
+    }
+
+    pub(crate) fn get_token_lexeme_arc_mutex(node: Arc<Mutex<AST_Node>>) -> String {
+        let node_ref = node.lock().unwrap();
+        (*node_ref).get_token_lexeme()
+    }
 }
 
 impl fmt::Display for AST_Node {
@@ -395,11 +405,6 @@ impl Into<Arc<Mutex<AST_Node>>> for AST_Node {
     fn into(self) -> Arc<Mutex<AST_Node>> {
         Arc::new(Mutex::new(self))
     }
-}
-
-pub fn get_AST_Type_from_arc(input: Arc<Mutex<AST_Node>>) -> AST_Type {
-    let node = input.lock().unwrap();
-    node.AST_Type.clone()
 }
 
 #[cfg(test)]
