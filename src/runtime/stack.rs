@@ -1,8 +1,8 @@
-/// A mock stack implemented for lox language. 
+/// A mock stack implemented for lox language.
 /// The stack is Vec<HashMap<String, LoxVariable>>, ie, it is a vector of hashmap from string to
 /// LoxVariable. LoxVariable is defined in runtime::lox_variable.
 ///
-/// HashMap is used for quick storage and retrieval. 
+/// HashMap is used for quick storage and retrieval.
 ///
 /// Vec is used for scope. EG
 ///
@@ -14,15 +14,15 @@
 /// ```
 ///
 /// Each scope is a hashmap. When entering a new scope, a new hashmap is pushed into the vector.
-/// When leaving a scope, the last hashmap is popped. 
+/// When leaving a scope, the last hashmap is popped.
 ///
 /// When variable is to be retreived, the newest scope (stack[-1]) is checked first. If not found, it will search in the previous scope
 ///
-/// Stack is a automatically inited when calling Stack::stack(). 
-/// It will not be inited before the first call to Stack::stack().
+/// Stack is a automatically constructed by calling the init function when calling Stack::stack()
+/// is first called.
 ///
 /// standard library exports the function lox_std::get_std() -> Vec<LoxVariable> that returns all the lox variable in the std.
-///stack::Stack::init() call this function and append all into the std stack
+/// stack::Stack::init() call this function and append all into the std stack
 use std::collections::HashMap;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
@@ -30,6 +30,7 @@ use std::sync::{Arc, Mutex};
 use log::debug;
 
 use super::lox_variable::{LoxVariable, LoxVariableType};
+use crate::interpreter::AST_Node::AST_Node;
 use crate::runtime::lox_std::get_std;
 
 // I think using static reference to stak make sense and is the most easy to implement
@@ -51,11 +52,11 @@ lazy_static! {
 /// Upon leaving a scope, the last map of stack.content is popped.
 #[derive(Debug)]
 pub(crate) struct Stack {
-    content: Vec<HashMap<String, LoxVariable>>,
+    content: Vec<HashMap<String, Arc<Mutex<LoxVariable>>>>,
 }
 
 impl Stack {
-    pub(crate) fn pop_scope(&mut self) -> Option<HashMap<String, LoxVariable>> {
+    pub(crate) fn pop_scope(&mut self) -> Option<HashMap<String, Arc<Mutex<LoxVariable>>>> {
         self.content.pop()
     }
 
@@ -71,18 +72,31 @@ impl Stack {
 
         let last_idx = self.content.len() - 1;
         let hashmap = &mut (self.content[last_idx]);
-        hashmap.insert(v.get_identifier().unwrap().to_string(), v);
+        hashmap.insert(
+            v.get_identifier().unwrap().to_string(),
+            Arc::new(Mutex::new(v)),
+        );
     }
 
-    pub(crate) fn get(&self, identifier: &str) -> Option<&LoxVariable> {
+    pub(crate) fn get(&self, identifier: &str) -> Option<Arc<Mutex<LoxVariable>>> {
         for maps in self.content.iter().rev() {
             match maps.get(identifier) {
-                Some(a) => return Some(a),
+                Some(a) => return Some(a.clone()),
                 None => {}
             }
         }
         None
     }
+
+    // pub(crate) fn get_mut(&self, identifier: &str) -> Option<&mut LoxVariable> {
+    //     for maps in self.content.iter().rev() {
+    //         match maps.get(identifier) {
+    //             Some(a) => return Some(a),
+    //             None => {}
+    //         }
+    //     }
+    //     None
+    // }
 
     fn init() {
         let mut stack_init = STACK_INIT.lock().unwrap();
@@ -106,28 +120,39 @@ impl Stack {
     }
 }
 
-// This macro is solely used for getting a reference of loxvariable from the stack
-// $identifier must be $str
-// $variable must be &LoxVariable
-// $node must be the arc_mutex_ast_node, and shall be the node you obtain $variable from.
-//
-// This macro assigns to $variable the content of $identifier stored in the stack.
-//
-// If $variable is not found, return ErrorLox based on $node
-macro_rules! stack_get {
-    ($variable:expr, $identifier:expr, $node:expr) => {
-        let __stack = crate::runtime::stack::Stack::stack();
-        let __stack = __stack.lock().unwrap();
-        match __stack.get($identifier) {
-            None => {
-                return Err(crate::ErrorLox::from_arc_mutex_ast_node(
-                    $node.clone(),
-                    &format!("No variable named '{}' found in stack", $identifier),
-                ));
-            }
-            Some(a) => {
-                $variable = a;
-            }
+pub(crate) fn stack_get_variable(
+    identifier: &str,
+    node: Arc<Mutex<AST_Node>>,
+) -> Result<Arc<Mutex<LoxVariable>>, crate::ErrorLox> {
+    let stack = Stack::stack();
+    let stack = stack.lock().unwrap();
+    match stack.get(identifier) {
+        None => {
+            return Err(crate::ErrorLox::from_arc_mutex_ast_node(
+                node.clone(),
+                &format!("No variable named '{}' found in stack; you may need to declare it.", identifier),
+            ));
         }
-    };
+        Some(a) => {
+            return Ok(a.clone());
+        }
+    }
+}
+
+pub(crate) fn stack_push(v: LoxVariable) {
+    let stack = Stack::stack();
+    let mut stack = stack.lock().unwrap();
+    stack.push(v);
+}
+
+pub(crate) fn stack_new_scope() {
+    let stack = Stack::stack();
+    let mut stack = stack.lock().unwrap();
+    stack.new_scope();
+}
+
+pub(crate) fn stack_pop_scope() {
+    let stack = Stack::stack();
+    let mut stack = stack.lock().unwrap();
+    stack.pop_scope();
 }

@@ -1,1 +1,5 @@
-print(1+PI)
+print("PI=")
+print(PI)
+PI = 1
+print("PI=")
+print(PI)

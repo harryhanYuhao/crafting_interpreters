@@ -12,6 +12,8 @@ use lox_variable::{LoxVariable, LoxVariableType};
 use std::env::var;
 use std::sync::{Arc, Mutex};
 
+use self::stack::{stack_get_variable, stack_push};
+
 fn lox_add(left: &LoxVariable, right: &LoxVariable) -> Result<LoxVariable, ErrorLox> {
     match left.get_type() {
         LoxVariableType::NUMBER(l) => {
@@ -307,8 +309,10 @@ fn eval_expr_function(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLo
     let function_input = function_input.to_tuple();
 
     let lexeme = AST_Node::get_token_lexeme_arc_mutex(node.clone());
-    let function: &LoxVariable;
-    stack_get!(function, &lexeme, node);
+    // let function: &LoxVariable;
+    // stack_get!(function, &lexeme, node);
+    let function = stack_get_variable(&lexeme, node)?;
+    let function = function.lock().unwrap();
 
     let inner_function = function.get_function();
     Ok(inner_function(&function_input))
@@ -320,21 +324,28 @@ fn eval_expr_paren(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> 
     let children = AST_Node::arc_mutex_get_children(node.clone());
     if children.len() == 0 {
         return Ok(LoxVariable::empty_from_arc_mutex_ast_node(node.clone()));
-    } else if children.len() == 1 {
-        let a = eval_expr(children[0].clone());
-        //     // DEBUG: line
-        // match &a {
-        //     Ok(o) => {
-        //         // println!("{o}");
-        //     }
-        //     Err(e) => {}
-        // }
-        return a;
     } else {
-        return Err(ErrorLox::from_arc_mutex_ast_node(
-            node.clone(),
-            "Expr(Paren) has more than one children; likely a parsing error",
-        ));
+        match children.len() {
+            1 => {
+                let a = eval_expr(children[0].clone());
+                //     // DEBUG: line
+                // match &a {
+                //     Ok(o) => {
+                //         // println!("{o}");
+                //     }
+                //     Err(e) => {}
+                // }
+                return a;
+            }
+            length => {
+                return Err(ErrorLox::from_arc_mutex_ast_node(
+                    node.clone(),
+                    &format!(
+                        "Expr(Paren) has more than one ({length}) children; likely a parsing error"
+                    ),
+                ))
+            }
+        };
     }
 }
 
@@ -376,8 +387,10 @@ fn eval_expr(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
         }
         AST_Type::Identifier => {
             let lexeme = AST_Node::get_token_lexeme_arc_mutex(node.clone());
-            let variable: &LoxVariable;
-            stack_get!(variable, &lexeme, node);
+            // let variable: &LoxVariable;
+            // stack_get!(variable, &lexeme, node);
+            let variable = stack_get_variable(&lexeme, node)?;
+            let variable = variable.lock().unwrap();
             return Ok(variable.clone());
         }
         _ => {
@@ -387,6 +400,62 @@ fn eval_expr(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
             ));
         }
     }
+}
+
+fn exec_assignment(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
+    let children = AST_Node::arc_mutex_get_children(node.clone());
+    if children.len() != 2 {
+        return Err(ErrorLox::from_arc_mutex_ast_node(
+            node.clone(),
+            "Expected 2 children, likely a parsing error",
+        ));
+    }
+
+    let left = children[0].clone();
+    let right = children[1].clone();
+
+    let lexeme = AST_Node::get_token_lexeme_arc_mutex(left.clone());
+    let right = eval_expr(right.clone())?;
+
+    let variable = stack_get_variable(&lexeme, left.clone())?;
+    let mut variable = variable.lock().unwrap();
+    variable.set_type(right.get_type());
+    variable.set_ref_node(node.clone());
+
+    Ok(variable.clone())
+}
+
+// var a = 1 will be parsed as:
+// |-(=    EQUAL 1:7)      AST_Type::Stmt(Declaration)
+//    |-(=    EQUAL 1:7)      AST_Type::Stmt(Assignment)
+//       |-(a    IDENTIFIER 1:5)      AST_Type::Identifier
+//       |-(1    NUMBER 1:9)      AST_Type::Expr(Normal)
+fn exec_declaration(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
+    // get the lexeme
+    let children = AST_Node::arc_mutex_get_children(node.clone());
+    if children.len() != 1 {
+        return Err(ErrorLox::from_arc_mutex_ast_node(
+            node.clone(),
+            "Expected 1 children for declaration, likely a parsing error",
+        ));
+    }
+    let assignment = children[0].clone();
+    let children = AST_Node::arc_mutex_get_children(assignment.clone());
+    if children.len() != 2 {
+        return Err(ErrorLox::from_arc_mutex_ast_node(
+            node.clone(),
+            "Expected 2 children for assignment, likely a parsing error",
+        ));
+    }
+    let left = children[0].clone();
+    let right = children[1].clone();
+    let mut variable = eval_expr(right.clone())?;
+    variable.set_ref_node(node.clone());
+    let lexeme = AST_Node::get_token_lexeme_arc_mutex(left.clone());
+    variable.set_identifier(lexeme);
+
+    stack_push(variable.clone());
+    Ok(LoxVariable::empty())
 }
 
 pub fn run(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
@@ -403,8 +472,14 @@ pub fn run(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
         | AST_Type::Expr(ExprType::Function) => {
             return eval_expr(tree.clone());
         }
+        AST_Type::Stmt(StmtType::Assignment) => {
+            return exec_assignment(tree.clone());
+        }
+        AST_Type::Stmt(StmtType::Declaration) => {
+            return exec_declaration(tree.clone());
+        }
         res => {
-            println!("res: {:?}", res);
+            println!("Un executed: {:?}", res);
         }
     }
     Ok(LoxVariable::empty())

@@ -45,12 +45,24 @@ impl LoxVariable {
         }
     }
 
+    pub(crate) fn set_identifier(&mut self, identifier: String) {
+        self.identifier = Some(identifier);
+    }
+
     pub(crate) fn get_ref_node(&self) -> Option<Arc<Mutex<AST_Node>>> {
         self.ref_node.clone()
     }
 
+    pub(crate) fn set_ref_node(&mut self, ref_node: Arc<Mutex<AST_Node>>) {
+        self.ref_node = Some(ref_node);
+    }
+
     pub(crate) fn get_type(&self) -> LoxVariableType {
         self.variable_type.clone()
+    }
+
+    pub(crate) fn set_type(&mut self, variable_type: LoxVariableType) {
+        self.variable_type = variable_type;
     }
 
     pub(crate) fn get_content(&self) -> Option<Arc<Mutex<AST_Node>>> {
