@@ -244,8 +244,8 @@ fn eval_expr_normal(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox>
         2 => {
             match AST_Node::get_token_type_from_arc(node.clone()) {
                 TokenType::PLUS => {
-                    let left = eval_expr(children[0].clone()).unwrap();
-                    let right = eval_expr(children[1].clone()).unwrap();
+                    let left = eval_expr(children[0].clone())?;
+                    let right = eval_expr(children[1].clone())?;
                     return lox_add(&left, &right);
                 }
                 TokenType::MINUS => {
@@ -350,13 +350,6 @@ fn eval_expr_negated(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox
         return Ok(LoxVariable::empty_from_arc_mutex_ast_node(node.clone()));
     } else if children.len() == 1 {
         let a = eval_expr(children[0].clone());
-        //     // DEBUG: line
-        // match &a {
-        //     Ok(o) => {
-        //         // println!("{o}");
-        //     }
-        //     Err(e) => {}
-        // }
         let a = a.unwrap();
         return lox_negate(&a);
     } else {
@@ -381,14 +374,19 @@ fn eval_expr(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
         AST_Type::Expr(ExprType::Negated) => {
             return eval_expr_negated(node.clone());
         }
-        _ => {}
+        AST_Type::Identifier => {
+            let lexeme = AST_Node::get_token_lexeme_arc_mutex(node.clone());
+            let variable: &LoxVariable;
+            stack_get!(variable, &lexeme, node);
+            return Ok(variable.clone());
+        }
+        _ => {
+            return Err(ErrorLox::from_arc_mutex_ast_node(
+                node.clone(),
+                "eval_expr called on non-expr, likely internal error",
+            ));
+        }
     }
-
-    let children = AST_Node::arc_mutex_get_children(node.clone());
-    // debug!("{node:?}");
-    if children.len() == 0 {}
-    if children.len() == 1 {}
-    Ok(LoxVariable::empty())
 }
 
 pub fn run(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {

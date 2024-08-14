@@ -1,3 +1,28 @@
+/// A mock stack implemented for lox language. 
+/// The stack is Vec<HashMap<String, LoxVariable>>, ie, it is a vector of hashmap from string to
+/// LoxVariable. LoxVariable is defined in runtime::lox_variable.
+///
+/// HashMap is used for quick storage and retrieval. 
+///
+/// Vec is used for scope. EG
+///
+/// ```lox
+/// print(PI) // PI is in std::math scope
+/// {  // this is a new scope
+///     var PI = 3.14 // PI is in this scope
+/// }  // end of scope
+/// ```
+///
+/// Each scope is a hashmap. When entering a new scope, a new hashmap is pushed into the vector.
+/// When leaving a scope, the last hashmap is popped. 
+///
+/// When variable is to be retreived, the newest scope (stack[-1]) is checked first. If not found, it will search in the previous scope
+///
+/// Stack is a automatically inited when calling Stack::stack(). 
+/// It will not be inited before the first call to Stack::stack().
+///
+/// standard library exports the function lox_std::get_std() -> Vec<LoxVariable> that returns all the lox variable in the std.
+///stack::Stack::init() call this function and append all into the std stack
 use std::collections::HashMap;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
@@ -7,6 +32,7 @@ use log::debug;
 use super::lox_variable::{LoxVariable, LoxVariableType};
 use crate::runtime::lox_std::get_std;
 
+// I think using static reference to stak make sense and is the most easy to implement
 lazy_static! {
     static ref STACK: Arc<Mutex<Stack>> = Arc::new(Mutex::new(Stack { content: vec![] }));
     static ref STACK_INIT: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
@@ -68,6 +94,7 @@ impl Stack {
         for i in get_std() {
             (*stack).push(i);
         }
+        (*stack).new_scope();
         *stack_init = true;
     }
 
@@ -95,7 +122,7 @@ macro_rules! stack_get {
             None => {
                 return Err(crate::ErrorLox::from_arc_mutex_ast_node(
                     $node.clone(),
-                    &format!("No {} found in stack", $identifier),
+                    &format!("No variable named '{}' found in stack", $identifier),
                 ));
             }
             Some(a) => {

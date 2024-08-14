@@ -61,7 +61,7 @@ pub fn run_file(path: &str) -> Result<(), ErrorLox> {
     let tree = tree.unwrap();
 
     let res = run(tree);
-    println!("{res:?}");
+    // println!("{res:?}");
     res?;
     
 

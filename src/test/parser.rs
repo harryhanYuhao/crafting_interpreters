@@ -1,7 +1,7 @@
 use crate::interpreter::parser::{self, *};
 use crate::interpreter::scanner::{self, *};
 use crate::interpreter::token::*;
-use crate::interpreter::parse_tree_unfinished::ParseTreeUnfinshed;
+use crate::interpreter::parse_tree_unfinished::{ParseTreeUnfinshed, PatternMatchingRes, RepetitivePatternMatchingRes};
 use crate::interpreter::AST_Node::{self, AST_Type, ExprType};
 use colored::*;
 
@@ -32,7 +32,6 @@ fn delimiter_location() {
             AST_Type::Unparsed(TokenType::LEFT_PAREN),
             AST_Type::Unparsed(TokenType::RIGHT_PAREN),
             &parse_tree,
-            "stdin",
         )
     );
 }
@@ -42,7 +41,7 @@ fn parser_match_ast_pattern() {
     let string = "a = 2;";
     let mut line_number = 1;
     let tokens: TokenArcVec = scanner::scan_tokens(string, &mut line_number, "stdin").unwrap();
-    let tree = parser::ParseTreeUnfinshed::from(&tokens);
+    let tree = ParseTreeUnfinshed::from(&tokens);
     let res = tree.match_ast_pattern(
         0,
         &vec![
@@ -108,9 +107,8 @@ fn parser_match_ast_pattern() {
 fn parser_match_ast_repetitive_pattern() {
     let string = "a = a = a =";
     let mut line_number = 1;
-    let mut parse_tree: ParseTreeUnfinshed = ParseTreeUnfinshed::new();
     let tokens: TokenArcVec = scanner::scan_tokens(string, &mut line_number, "stdin").unwrap();
-    let mut tree = parser::ParseTreeUnfinshed::from(&tokens);
+    let mut tree = ParseTreeUnfinshed::from(&tokens);
     // println!("{tree:?}");
 
     let res = tree.match_ast_repetitive_pattern(
@@ -133,9 +131,8 @@ fn parser_match_ast_repetitive_pattern() {
 
     let string = "a = a = a b";
     let mut line_number = 1;
-    let mut parse_tree: ParseTreeUnfinshed = ParseTreeUnfinshed::new();
     let tokens: TokenArcVec = scanner::scan_tokens(string, &mut line_number, "stdin").unwrap();
-    let mut tree = parser::ParseTreeUnfinshed::from(&tokens);
+    let mut tree = ParseTreeUnfinshed::from(&tokens);
     // println!("{tree:?}");
 
     let res = tree.match_ast_repetitive_pattern(
@@ -157,11 +154,10 @@ fn parser_match_ast_repetitive_pattern() {
 fn delete_consect_stmt_sep() {
     let string = "a\n\n\n\nb";
     let mut line_number = 1;
-    let mut parse_tree: ParseTreeUnfinshed = ParseTreeUnfinshed::new();
     let tokens: TokenArcVec = scanner::scan_tokens(string, &mut line_number, "stdin").unwrap();
 
-    let mut tree = parser::ParseTreeUnfinshed::from(&tokens);
+    let mut tree = ParseTreeUnfinshed::from(&tokens);
     assert_eq!(delete_consec_stmt_sep_from_idx_inclusive(&mut tree, 0), 0);
-    let mut tree = parser::ParseTreeUnfinshed::from(&tokens);
+    let mut tree = ParseTreeUnfinshed::from(&tokens);
     assert_eq!(delete_consec_stmt_sep_from_idx_inclusive(&mut tree, 1), 4);
 }

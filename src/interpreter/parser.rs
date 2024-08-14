@@ -544,13 +544,13 @@ fn parse_ternary_left_assoc(
     if AST_Node::arc_belongs_to_Token_type(tree[0].clone(), operator_token_types) {
         return ParseState::Err(ErrorLox::from_arc_mutex_ast_node(
             tree[0].clone(),
-            &format!("{:?} found in the beginning", operator_token_types),
+            &format!("{:?} without preceding expression", operator_token_types),
         ));
     }
     if AST_Node::arc_belongs_to_Token_type(tree[tree.len() - 1].clone(), operator_token_types) {
         return ParseState::Err(ErrorLox::from_arc_mutex_ast_node(
             tree[tree.len() - 1].clone(),
-            &format!("{:?} found in the end", operator_token_types),
+            &format!("{:?} without following expression", operator_token_types),
         ));
     }
 
