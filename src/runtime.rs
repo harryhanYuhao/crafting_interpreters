@@ -9,6 +9,7 @@ use crate::err_lox::ErrorLox;
 use crate::interpreter::token::{Token, TokenType};
 use crate::interpreter::AST_Node::{AST_Node, AST_Type, ExprType, StmtType};
 use lox_variable::{LoxVariable, LoxVariableType};
+use std::env::var;
 use std::sync::{Arc, Mutex};
 
 fn lox_add(left: &LoxVariable, right: &LoxVariable) -> Result<LoxVariable, ErrorLox> {
@@ -25,7 +26,7 @@ fn lox_add(left: &LoxVariable, right: &LoxVariable) -> Result<LoxVariable, Error
                 return Ok(LoxVariable::new(
                     None,
                     LoxVariableType::NUMBER(l + num),
-                    None,
+                    left.get_ref_node(),
                 ));
             }
         }
@@ -41,7 +42,7 @@ fn lox_add(left: &LoxVariable, right: &LoxVariable) -> Result<LoxVariable, Error
                 return Ok(LoxVariable::new(
                     None,
                     LoxVariableType::STRING(l + &r),
-                    None,
+                    left.get_ref_node(),
                 ));
             }
         }
@@ -68,7 +69,7 @@ fn lox_minus(left: &LoxVariable, right: &LoxVariable) -> Result<LoxVariable, Err
                 return Ok(LoxVariable::new(
                     None,
                     LoxVariableType::NUMBER(l - num),
-                    None,
+                    left.get_ref_node(),
                 ));
             }
         }
@@ -95,7 +96,7 @@ fn lox_multiply(left: &LoxVariable, right: &LoxVariable) -> Result<LoxVariable, 
                 return Ok(LoxVariable::new(
                     None,
                     LoxVariableType::NUMBER(l * num),
-                    None,
+                    left.get_ref_node(),
                 ));
             }
         }
@@ -122,7 +123,7 @@ fn lox_divide(left: &LoxVariable, right: &LoxVariable) -> Result<LoxVariable, Er
                 return Ok(LoxVariable::new(
                     None,
                     LoxVariableType::NUMBER(l / num),
-                    None,
+                    left.get_ref_node(),
                 ));
             }
         }
@@ -131,6 +132,31 @@ fn lox_divide(left: &LoxVariable, right: &LoxVariable) -> Result<LoxVariable, Er
                 left,
                 "Expected NUMBER type for left operand",
             ));
+        }
+    }
+}
+
+fn lox_negate(variable: &LoxVariable) -> Result<LoxVariable, ErrorLox> {
+    match variable.get_type() {
+        LoxVariableType::NUMBER(n) => {
+            return Ok(LoxVariable::new(
+                variable.get_identifier(),
+                LoxVariableType::NUMBER(-n),
+                variable.get_ref_node(),
+            ))
+        }
+        LoxVariableType::BOOL(b) => {
+            return Ok(LoxVariable::new(
+                variable.get_identifier(),
+                LoxVariableType::BOOL(!b),
+                variable.get_ref_node(),
+            ))
+        }
+        lox_type => {
+            return Err(ErrorLox::from_lox_variable(
+                variable,
+                &format!("lox_negate: expected NUMBER or BOOL, found {lox_type:?}"),
+            ))
         }
     }
 }
@@ -181,11 +207,23 @@ fn eval_lone_expr(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
             return Ok(LoxVariable::new(
                 None,
                 LoxVariableType::STRING(token.get_lexeme().clone()),
-                None,
+                Some(node.clone()),
             ))
         }
-        TokenType::TRUE => return Ok(LoxVariable::new(None, LoxVariableType::BOOL(true), None)),
-        TokenType::FALSE => return Ok(LoxVariable::new(None, LoxVariableType::BOOL(false), None)),
+        TokenType::TRUE => {
+            return Ok(LoxVariable::new(
+                None,
+                LoxVariableType::BOOL(true),
+                Some(node.clone()),
+            ))
+        }
+        TokenType::FALSE => {
+            return Ok(LoxVariable::new(
+                None,
+                LoxVariableType::BOOL(false),
+                Some(node.clone()),
+            ))
+        }
         _ => {}
     }
 
@@ -299,6 +337,36 @@ fn eval_expr_paren(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> 
         ));
     }
 }
+
+fn eval_expr_negated(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
+    if !AST_Node::is_arc_mutex_expr(node.clone()) {
+        return Err(ErrorLox::from_arc_mutex_ast_node(
+            node.clone(),
+            "Expected Expr. eval_expr_negated called on non-expr, likely internal error",
+        ));
+    }
+    let children = AST_Node::arc_mutex_get_children(node.clone());
+    if children.len() == 0 {
+        return Ok(LoxVariable::empty_from_arc_mutex_ast_node(node.clone()));
+    } else if children.len() == 1 {
+        let a = eval_expr(children[0].clone());
+        //     // DEBUG: line
+        // match &a {
+        //     Ok(o) => {
+        //         // println!("{o}");
+        //     }
+        //     Err(e) => {}
+        // }
+        let a = a.unwrap();
+        return lox_negate(&a);
+    } else {
+        return Err(ErrorLox::from_arc_mutex_ast_node(
+            node.clone(),
+            "Expr(Paren) has more than one children; likely a parsing error",
+        ));
+    }
+}
+
 fn eval_expr(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
     match AST_Node::get_AST_Type_from_arc(node.clone()) {
         AST_Type::Expr(ExprType::Normal) => {
@@ -309,6 +377,9 @@ fn eval_expr(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
         }
         AST_Type::Expr(ExprType::Paren) => {
             return eval_expr_paren(node.clone());
+        }
+        AST_Type::Expr(ExprType::Negated) => {
+            return eval_expr_negated(node.clone());
         }
         _ => {}
     }

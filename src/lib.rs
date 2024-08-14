@@ -60,7 +60,10 @@ pub fn run_file(path: &str) -> Result<(), ErrorLox> {
     let tree = parse_tree.get_finished_node()?;
     let tree = tree.unwrap();
 
-    let _ = run(tree);
+    let res = run(tree);
+    println!("{res:?}");
+    res?;
+    
 
     Ok(())
 }

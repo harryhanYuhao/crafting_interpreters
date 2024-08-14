@@ -38,10 +38,10 @@ impl LoxVariable {
         }
     }
 
-    pub(crate) fn get_identifier(&self) -> Option<&str> {
+    pub(crate) fn get_identifier(&self) -> Option<String> {
         match &self.identifier {
             None => None,
-            Some(a) => Some(a),
+            Some(a) => Some(a.clone()),
         }
     }
 
