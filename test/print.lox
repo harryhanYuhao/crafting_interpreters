@@ -1,5 +1,4 @@
-print("PI=")
-print(PI)
+print("PI = ", PI)
 PI = 1
-print("PI=")
-print(PI)
+print("After PI = 1")
+print("PI = ", PI)

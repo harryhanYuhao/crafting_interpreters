@@ -371,6 +371,20 @@ fn eval_expr_negated(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox
     }
 }
 
+fn eval_tuple(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
+    let mut tuple: Vec<Box<LoxVariable>> = Vec::new();
+    let children = AST_Node::arc_mutex_get_children(node.clone());
+    for i in children {
+        let a = eval_expr(i.clone());
+        tuple.push(Box::new(a.unwrap()));
+    }
+    return Ok(LoxVariable::new(
+        None,
+        LoxVariableType::TUPLE(tuple),
+        Some(node.clone()),
+    ));
+}
+
 fn eval_expr(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
     match AST_Node::get_AST_Type_from_arc(node.clone()) {
         AST_Type::Expr(ExprType::Normal) => {
@@ -392,6 +406,9 @@ fn eval_expr(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
             let variable = stack_get_variable(&lexeme, node)?;
             let variable = variable.lock().unwrap();
             return Ok(variable.clone());
+        }
+        AST_Type::Tuple => {
+            return eval_tuple(node.clone());
         }
         _ => {
             return Err(ErrorLox::from_arc_mutex_ast_node(
@@ -472,6 +489,9 @@ pub fn run(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
         | AST_Type::Expr(ExprType::Function) => {
             return eval_expr(tree.clone());
         }
+        AST_Type::Tuple => {
+            return eval_tuple(tree.clone());
+        }
         AST_Type::Stmt(StmtType::Assignment) => {
             return exec_assignment(tree.clone());
         }
@@ -479,7 +499,7 @@ pub fn run(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
             return exec_declaration(tree.clone());
         }
         res => {
-            println!("Un executed: {:?}", res);
+            println!("Unexecuted: {:?}", res);
         }
     }
     Ok(LoxVariable::empty())
