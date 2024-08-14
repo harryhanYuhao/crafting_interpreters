@@ -130,7 +130,7 @@ pub(crate) fn stack_get_variable(
         None => {
             return Err(crate::ErrorLox::from_arc_mutex_ast_node(
                 node.clone(),
-                &format!("No variable named '{}' found in stack; you may need to declare it.", identifier),
+                &format!("Can not find value '{}' in scope. Variable can only be used after declaration.", identifier),
             ));
         }
         Some(a) => {

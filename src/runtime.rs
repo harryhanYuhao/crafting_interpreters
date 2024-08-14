@@ -163,6 +163,173 @@ fn lox_negate(variable: &LoxVariable) -> Result<LoxVariable, ErrorLox> {
     }
 }
 
+fn lox_greater(left: &LoxVariable, right: &LoxVariable) -> Result<LoxVariable, ErrorLox> {
+    match left.get_type() {
+        LoxVariableType::NUMBER(l) => {
+            if !right.is_number() {
+                return Err(ErrorLox::from_lox_variable(
+                    right,
+                    "Expected NUMBER type for right operand",
+                ));
+            } else {
+                // SUCCESS CASE
+                let num = right.get_number();
+                return Ok(LoxVariable::new(
+                    None,
+                    LoxVariableType::BOOL(l > num),
+                    left.get_ref_node(),
+                ));
+            }
+        }
+        _ => {
+            return Err(ErrorLox::from_lox_variable(
+                left,
+                "Expected NUMBER type for left operand",
+            ));
+        }
+    }
+}
+
+fn lox_greater_equal(left: &LoxVariable, right: &LoxVariable) -> Result<LoxVariable, ErrorLox> {
+    match left.get_type() {
+        LoxVariableType::NUMBER(l) => {
+            if !right.is_number() {
+                return Err(ErrorLox::from_lox_variable(
+                    right,
+                    "Expected NUMBER type for right operand",
+                ));
+            } else {
+                // SUCCESS CASE
+                let num = right.get_number();
+                return Ok(LoxVariable::new(
+                    None,
+                    LoxVariableType::BOOL(l >= num),
+                    left.get_ref_node(),
+                ));
+            }
+        }
+        _ => {
+            return Err(ErrorLox::from_lox_variable(
+                left,
+                "Expected NUMBER type for left operand",
+            ));
+        }
+    }
+}
+
+fn lox_equal_equal(left: &LoxVariable, right: &LoxVariable) -> Result<LoxVariable, ErrorLox> {
+    match left.get_type() {
+        LoxVariableType::NUMBER(l) => {
+            if !right.is_number() {
+                return Err(ErrorLox::from_lox_variable(
+                    right,
+                    "Expected NUMBER type for right operand",
+                ));
+            } else {
+                // SUCCESS CASE
+                let num = right.get_number();
+                return Ok(LoxVariable::new(
+                    None,
+                    LoxVariableType::BOOL(l == num),
+                    left.get_ref_node(),
+                ));
+            }
+        }
+        LoxVariableType::STRING(l) => {
+            if !right.is_string() {
+                return Err(ErrorLox::from_lox_variable(
+                    right,
+                    "Expected STRING type for right operand",
+                ));
+            } else {
+                let r = right.get_string();
+                // SUCCESS CASE
+                return Ok(LoxVariable::new(
+                    None,
+                    LoxVariableType::BOOL(l == r),
+                    left.get_ref_node(),
+                ));
+            }
+        }
+        LoxVariableType::BOOL(l) => {
+            if !right.is_bool() {
+                return Err(ErrorLox::from_lox_variable(
+                    right,
+                    "Expected BOOL type for right operand",
+                ));
+            } else {
+                let r = right.get_bool();
+                // SUCCESS CASE
+                return Ok(LoxVariable::new(
+                    None,
+                    LoxVariableType::BOOL(l == r),
+                    left.get_ref_node(),
+                ));
+            }
+        }
+        _ => {
+            return Err(ErrorLox::from_lox_variable(
+                left,
+                "Expected NUMBER or STRING or BOOL type for left operand",
+            ));
+        }
+    }
+}
+
+fn lox_less(left: &LoxVariable, right: &LoxVariable) -> Result<LoxVariable, ErrorLox> {
+    match left.get_type() {
+        LoxVariableType::NUMBER(l) => {
+            if !right.is_number() {
+                return Err(ErrorLox::from_lox_variable(
+                    right,
+                    "Expected NUMBER type for right operand",
+                ));
+            } else {
+                // SUCCESS CASE
+                let num = right.get_number();
+                return Ok(LoxVariable::new(
+                    None,
+                    LoxVariableType::BOOL(l < num),
+                    left.get_ref_node(),
+                ));
+            }
+        }
+        _ => {
+            return Err(ErrorLox::from_lox_variable(
+                left,
+                "Expected NUMBER type for left operand",
+            ));
+        }
+    }
+}
+
+fn lox_less_equal(left: &LoxVariable, right: &LoxVariable) -> Result<LoxVariable, ErrorLox> {
+    match left.get_type() {
+        LoxVariableType::NUMBER(l) => {
+            if !right.is_number() {
+                return Err(ErrorLox::from_lox_variable(
+                    right,
+                    "Expected NUMBER type for right operand",
+                ));
+            } else {
+                // SUCCESS CASE
+                let num = right.get_number();
+                return Ok(LoxVariable::new(
+                    None,
+                    LoxVariableType::BOOL(l <= num),
+                    left.get_ref_node(),
+                ));
+            }
+        }
+        _ => {
+            return Err(ErrorLox::from_lox_variable(
+                left,
+                "Expected NUMBER type for left operand",
+            ));
+        }
+    }
+}
+
 fn execute_compound_stmt(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
     let children = AST_Node::arc_mutex_get_children(node.clone());
     for (idx, i) in children.iter().enumerate() {
@@ -264,6 +431,31 @@ fn eval_expr_normal(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox>
                     let left = eval_expr(children[0].clone()).unwrap();
                     let right = eval_expr(children[1].clone()).unwrap();
                     return lox_divide(&left, &right);
+                }
+                TokenType::GREATER => {
+                    let left = eval_expr(children[0].clone()).unwrap();
+                    let right = eval_expr(children[1].clone()).unwrap();
+                    return lox_greater(&left, &right);
+                }
+                TokenType::GREATER_EQUAL => {
+                    let left = eval_expr(children[0].clone()).unwrap();
+                    let right = eval_expr(children[1].clone()).unwrap();
+                    return lox_greater_equal(&left, &right);
+                }
+                TokenType::EQUAL_EQUAL => {
+                    let left = eval_expr(children[0].clone()).unwrap();
+                    let right = eval_expr(children[1].clone()).unwrap();
+                    return lox_equal_equal(&left, &right);
+                }
+                TokenType::LESS => {
+                    let left = eval_expr(children[0].clone()).unwrap();
+                    let right = eval_expr(children[1].clone()).unwrap();
+                    return lox_less(&left, &right);
+                }
+                TokenType::LESS_EQUAL => {
+                    let left = eval_expr(children[0].clone()).unwrap();
+                    let right = eval_expr(children[1].clone()).unwrap();
+                    return lox_less_equal(&left, &right);
                 }
                 _ => {
                     // return Err(ErrorLox::from_arc_mutex_ast_node(node.clone(), "Expected MINUS token"));
@@ -411,6 +603,7 @@ fn eval_expr(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
             return eval_tuple(node.clone());
         }
         _ => {
+            debug!("{:?}", node);
             return Err(ErrorLox::from_arc_mutex_ast_node(
                 node.clone(),
                 "eval_expr called on non-expr, likely internal error",

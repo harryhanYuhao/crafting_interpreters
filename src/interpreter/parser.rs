@@ -501,8 +501,12 @@ fn parse_function_definition(tree: &mut ParseTreeUnfinshed) -> ParseState {
         match tree.match_ast_pattern(i, &patterns, 0) {
             PatternMatchingRes::Nomatch => {}
             PatternMatchingRes::FailedAt(num) => {
+                let mut length = i + num;
+                if length >= tree.len() {
+                    length = tree.len() - 1;
+                }
                 return ParseState::Err(ErrorLox::from_arc_mutex_ast_node(
-                    tree[i + num - 1].clone(),
+                    tree[length].clone(),
                     &format!("Expected {:?}", patterns[num]),
                 ))
             }
@@ -710,8 +714,12 @@ fn parse_assignment_like(
                 length -= 3;
             }
             PatternMatchingRes::FailedAt(num) => {
+                let mut length = i + num;
+                if length >= tree.len() {
+                    length = tree.len() - 1;
+                }
                 return ParseState::Err(ErrorLox::from_arc_mutex_ast_node(
-                    tree[i + num].clone(),
+                    tree[length].clone(),
                     &format!("Expected {:?}", expected[num]),
                 ))
             }
@@ -747,8 +755,12 @@ fn parse_prefix(
         match res {
             PatternMatchingRes::Nomatch => {}
             PatternMatchingRes::FailedAt(num) => {
+                let mut length = i + num;
+                if length >= tree.len() {
+                    length = tree.len() - 1;
+                }
                 return ParseState::Err(ErrorLox::from_arc_mutex_ast_node(
-                    tree[i + num].clone(),
+                    tree[length].clone(),
                     &format!("Expected {:?}", expected[num]),
                 ))
             }
