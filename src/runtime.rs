@@ -567,8 +567,8 @@ fn eval_tuple(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
     let mut tuple: Vec<Box<LoxVariable>> = Vec::new();
     let children = AST_Node::arc_mutex_get_children(node.clone());
     for i in children {
-        let a = eval_expr(i.clone());
-        tuple.push(Box::new(a.unwrap()));
+        let a = eval_expr(i.clone())?;
+        tuple.push(Box::new(a));
     }
     return Ok(LoxVariable::new(
         None,
@@ -668,14 +668,119 @@ fn exec_declaration(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox>
     Ok(LoxVariable::empty())
 }
 
+fn exec_braced_stmt(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
+    stack::stack_new_scope();
+    let res = execute_compound_stmt(node.clone());
+    stack::stack_pop_scope();
+    return res;
+}
+
+/// ```lox
+/// if true {
+///     print("true!");
+/// }
+/// ```
+/// will be parsed into this
+///(if   IF 1:1)      AST_Type::Stmt(If)
+///  |-(true TRUE 1:4)      AST_Type::Expr(Normal)
+///  |-({    LEFT_BRACE 1:9)      AST_Type::Stmt(Braced)
+///     |-(\xa  STMT_SEP 3:0)      AST_Type::Stmt(Normal)
+///        |-(print IDENTIFIER 2:2)      AST_Type::Expr(Function)
+///           |-((    LEFT_PAREN 2:7)      AST_Type::Expr(Paren)
+///              |-(true! STRING 2:8)      AST_Type::Expr(Normal)
+fn exec_if_stmt(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
+    let children = AST_Node::arc_mutex_get_children(node.clone());
+    if children.len() < 2 {
+        return Err(ErrorLox::from_arc_mutex_ast_node(
+            node.clone(),
+            "If statement requires a condition and braced statement. Only fonnd one",
+        ));
+    }
+    if !AST_Node::is_arc_mutex_expr(children[0].clone()) {
+        return Err(ErrorLox::from_arc_mutex_ast_node(
+            node.clone(),
+            "Expected boolean expression after if",
+        ));
+    }
+
+    // error check and eval the condition
+    let condition = eval_expr(children[0].clone())?;
+    if !condition.is_bool() {
+        return Err(ErrorLox::from_lox_variable(
+            &condition,
+            "Expected boolean expression after if",
+        ));
+    }
+
+    // check is the second expr braced
+    if AST_Node::get_AST_Type_from_arc(children[1].clone()) != AST_Type::Stmt(StmtType::Braced) {
+        return Err(ErrorLox::from_arc_mutex_ast_node(
+            node.clone(),
+            "Expected braced stmt after if",
+        ));
+    }
+
+    if condition.get_bool() {
+        return exec_braced_stmt(children[1].clone());
+    } else {
+        return Ok(LoxVariable::empty());
+    }
+}
+
+/// ```lox
+/// while true {
+///     var a = 1
+/// }
+/// ```
+/// will be parsed into these
+///(while WHILE 1:1)      AST_Type::Stmt(While)
+/// |-(true TRUE 1:7)      AST_Type::Expr(Normal)
+/// |-({    LEFT_BRACE 1:12)      AST_Type::Stmt(Braced)
+///    |-(=    EQUAL 2:8)      AST_Type::Stmt(Declaration)
+///       |-(=    EQUAL 2:8)      AST_Type::Stmt(Assignment)
+///          |-(a    IDENTIFIER 2:6)      AST_Type::Identifier
+///          |-(1    NUMBER 2:10)      AST_Type::Expr(Normal)
+fn exec_while_stmt(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
+    let children = AST_Node::arc_mutex_get_children(node.clone());
+    if children.len() < 2 {
+        return Err(ErrorLox::from_arc_mutex_ast_node(
+            node.clone(),
+            "While statement requires a condition and braced statement. Only fonnd one",
+        ));
+    }
+    if !AST_Node::is_arc_mutex_expr(children[0].clone()) {
+        return Err(ErrorLox::from_arc_mutex_ast_node(
+            node.clone(),
+            "Expected boolean expression after while",
+        ));
+    }
+
+    // error check and eval the condition
+    let mut condition = eval_expr(children[0].clone())?;
+    if !condition.is_bool() {
+        return Err(ErrorLox::from_lox_variable(
+            &condition,
+            "Expected boolean expression after while",
+        ));
+    }
+
+    // check is the second expr braced
+    if AST_Node::get_AST_Type_from_arc(children[1].clone()) != AST_Type::Stmt(StmtType::Braced) {
+        return Err(ErrorLox::from_arc_mutex_ast_node(
+            node.clone(),
+            "Expected braced stmt after while",
+        ));
+    }
+
+    let mut res: LoxVariable = LoxVariable::empty();
+    while condition.get_bool() {
+        res = exec_braced_stmt(children[1].clone())?;
+        condition = eval_expr(children[0].clone())?;
+    }
+    Ok(res)
+}
 pub fn run(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
     match AST_Node::get_AST_Type_from_arc(tree.clone()) {
-        AST_Type::Stmt(StmtType::Compound) => {
-            return execute_compound_stmt(tree.clone());
-        }
-        AST_Type::Stmt(StmtType::Normal) => {
-            return execute_compound_stmt(tree.clone());
-        }
         AST_Type::Expr(ExprType::Normal)
         | AST_Type::Expr(ExprType::Paren)
         | AST_Type::Expr(ExprType::Negated)
@@ -685,11 +790,26 @@ pub fn run(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
         AST_Type::Tuple => {
             return eval_tuple(tree.clone());
         }
+        AST_Type::Stmt(StmtType::Compound) => {
+            return execute_compound_stmt(tree.clone());
+        }
+        AST_Type::Stmt(StmtType::Normal) => {
+            return execute_compound_stmt(tree.clone());
+        }
         AST_Type::Stmt(StmtType::Assignment) => {
             return exec_assignment(tree.clone());
         }
         AST_Type::Stmt(StmtType::Declaration) => {
             return exec_declaration(tree.clone());
+        }
+        AST_Type::Stmt(StmtType::Braced) => {
+            return exec_braced_stmt(tree.clone());
+        }
+        AST_Type::Stmt(StmtType::If) => {
+            return exec_if_stmt(tree.clone());
+        }
+        AST_Type::Stmt(StmtType::While) => {
+            return exec_while_stmt(tree.clone());
         }
         res => {
             println!("Unexecuted: {:?}", res);

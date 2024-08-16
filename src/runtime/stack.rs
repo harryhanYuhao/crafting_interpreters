@@ -113,7 +113,7 @@ impl Stack {
     }
 
     // Other part of the crate call this method to obtain the stack
-    pub(crate) fn stack() -> Arc<Mutex<Stack>> {
+    fn stack() -> Arc<Mutex<Stack>> {
         Stack::init();
 
         STACK.clone()
