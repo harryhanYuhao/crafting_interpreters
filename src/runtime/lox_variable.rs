@@ -10,7 +10,7 @@ pub struct LoxFunction {
 }
 
 impl LoxFunction {
-    fn from_ast(
+    pub(crate) fn from_ast(
         tuple: Arc<Mutex<AST_Node>>,
         execute_block: Arc<Mutex<AST_Node>>,
     ) -> Result<Self, ErrorLox> {

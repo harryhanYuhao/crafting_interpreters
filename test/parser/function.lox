@@ -1,5 +1,8 @@
 fn hello (a,b){
 	a + b
 }
+
+fn none() {
+}
 // var a = 1
 // hello (1, a)

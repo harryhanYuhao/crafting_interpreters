@@ -944,10 +944,63 @@ fn exec_while_stmt(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> 
     Ok(res)
 }
 
-// TODO: UNFINISHED
+/// ```lox
+/// fn none() {}
+/// ```
+/// will be parsed to this
+///(fn   FN 5:1)      AST_Type::Stmt(FunctionDef)
+///  |-(none IDENTIFIER 5:4)      AST_Type::Identifier
+///  |-((    LEFT_PAREN 5:8)      AST_Type::Expr(Paren)
+///  |-({    LEFT_BRACE 5:11)      AST_Type::Stmt(Braced)
+///
+///
+///
+///```lox
+/// fn hello (a,b){
+///	a + b
+/// }
+///```
+///will be parsed into this
+///(fn   FN 5:1)      AST_Type::Stmt(FunctionDef)
+///  |-(none IDENTIFIER 5:4)      AST_Type::Identifier
+///  |-((    LEFT_PAREN 5:8)      AST_Type::Expr(Paren)
+///  |-({    LEFT_BRACE 5:11)      AST_Type::Stmt(Braced)
 pub fn exec_function_definition(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
-    Ok(LoxVariable::empty())
+    AST_Node::error_handle_check_children_num_and_type_arc(
+        tree.clone(),
+        &vec![
+            AST_Type::Identifier,
+            AST_Type::Expr(ExprType::Paren),
+            AST_Type::Stmt(StmtType::Braced),
+        ],
+        "Correct function definition is fn IDENTIFER (a,b,c) {}",
+    )?;
+    let children = AST_Node::arc_mutex_get_children(tree.clone());
+    // the first child is the identifer
+    let identifier = AST_Node::get_token_lexeme_arc_mutex(children[0].clone());
+    // the second child is expr(paren), holding a tuple or nothing
+    let tuple: Arc<Mutex<AST_Node>>;
+    let expr_children = AST_Node::arc_mutex_get_children(children[1].clone());
+    if expr_children.len() == 0 {
+        tuple = AST_Node::dummy_node(AST_Type::Tuple).into();
+    } else if expr_children.len() == 1 {
+        tuple = expr_children[0].clone();
+    } else {
+        return Err(ErrorLox::from_arc_mutex_ast_node(
+            children[1].clone(),
+            "Expected one tuple, found multiple nodes",
+        ));
+    }
+
+    let lox_function = LoxFunction::from_ast(tuple, children[2].clone())?;
+
+    Ok(LoxVariable::new(
+        Some(identifier),
+        LoxVariableType::LOX_FUNCTION(lox_function),
+        Some(tree.clone()),
+    ))
 }
+
 pub fn run(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
     match AST_Node::get_AST_Type_from_arc(tree.clone()) {
         AST_Type::Expr(ExprType::Normal)
