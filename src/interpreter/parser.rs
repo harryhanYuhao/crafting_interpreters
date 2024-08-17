@@ -35,6 +35,17 @@ macro_rules! HandleParseState {
     };
 }
 
+macro_rules! handle_result_none_errorlox_for_parsestate {
+    ($res:expr) => {
+        match $res {
+            Err(e) => {
+                return ParseState::Err(e);
+            }
+            _ => {}
+        }
+    };
+}
+
 lazy_static! {
     static ref RVALUES: Vec<AST_Type> =
         [AST_Type::get_all_expr(), vec![AST_Type::Identifier]].concat();
@@ -481,9 +492,9 @@ fn parse_function_eval(tree: &mut ParseTreeUnfinshed) -> ParseState {
             && AST_Node::get_AST_Type_from_arc(tree[i + 1].clone())
                 == AST_Type::Expr(ExprType::Paren)
         {
-            // tree[i + 1] is paren. 
+            // tree[i + 1] is paren.
             // The paren struct itself shall hold at most one child, and thus is redundant
-            // and shall be removed. 
+            // and shall be removed.
             AST_Node::arc_mutex_append_child(tree[i].clone(), tree[i + 1].clone());
             AST_Node::set_arc_mutex_AST_Type(tree[i].clone(), AST_Type::Expr(ExprType::Function));
             tree.remove(i + 1);
@@ -514,7 +525,7 @@ fn parse_function_definition(tree: &mut ParseTreeUnfinshed) -> ParseState {
                 return ParseState::Err(ErrorLox::from_arc_mutex_ast_node(
                     tree[length].clone(),
                     &format!("Expected {:?}", patterns[num]),
-                ))
+                ));
             }
             PatternMatchingRes::Matched => {
                 AST_Node::arc_mutex_append_child(tree[i].clone(), tree[i + 1].clone());
@@ -727,7 +738,7 @@ fn parse_assignment_like(
                 return ParseState::Err(ErrorLox::from_arc_mutex_ast_node(
                     tree[length].clone(),
                     &format!("Expected {:?}", expected[num]),
-                ))
+                ));
             }
             _ => {}
         }
@@ -768,7 +779,7 @@ fn parse_prefix(
                 return ParseState::Err(ErrorLox::from_arc_mutex_ast_node(
                     tree[length].clone(),
                     &format!("Expected {:?}", expected[num]),
-                ))
+                ));
             }
             PatternMatchingRes::Matched => {
                 let node = tree[i + 1].clone();
@@ -959,37 +970,21 @@ fn parse_if(tree: &mut ParseTreeUnfinshed) -> ParseState {
 
         // NOTE:: tree[i] is if
         delete_stmt_sep_adjust_len!(tree, i + 1, length);
-        if i + 1 == length - 1 || !AST_Node::arc_belongs_to_AST_type(tree[i + 1].clone(), &RVALUES)
-        {
-            let error_idx = match i + 1 {
-                tmp if tmp == length - 1 => length - 1,
-                tmp => tmp + 1,
-            };
-            return ParseState::Err(ErrorLox::from_arc_mutex_ast_node(
-                tree[error_idx].clone(),
-                &format!("Expected rvalues",),
-            ));
-        }
+        handle_result_none_errorlox_for_parsestate!(tree.error_handle_tree_index_type(
+            i + 1,
+            &RVALUES,
+            "Expected rvalues after if"
+        ));
 
         // after RVALUE, braced stmt may be on the new line
         delete_stmt_sep_adjust_len!(tree, i + 2, length);
+        handle_result_none_errorlox_for_parsestate!(tree.error_handle_tree_index_type(
+            i + 2,
+            &vec![AST_Type::Stmt(StmtType::Braced)],
+            "Expected braced stmt after if"
+        ));
 
-        if i + 2 == length - 1
-            || !AST_Node::arc_belongs_to_AST_type(
-                tree[i + 2].clone(),
-                &vec![AST_Type::Stmt(StmtType::Braced)],
-            )
-        {
-            let error_idx = match i + 2 {
-                tmp if tmp <= length - 1 => tmp,
-                _ => length - 1,
-            };
-            return ParseState::Err(ErrorLox::from_arc_mutex_ast_node(
-                tree[error_idx].clone(),
-                &format!("Expected Braced Statment",),
-            ));
-        }
-        // the if (RVALUE) {STMT} is parsed``
+        // parse if (RVALUE) {STMT}
         // disregarding else and else if for now
         root_idx = i;
         {
@@ -1003,6 +998,7 @@ fn parse_if(tree: &mut ParseTreeUnfinshed) -> ParseState {
         tree.remove(i + 1);
         tree.remove(i + 1);
         length -= 2;
+        // i is incremented
         i += 1;
 
         // get next valid statemnet before continuing parsing
@@ -1025,7 +1021,9 @@ fn parse_if(tree: &mut ParseTreeUnfinshed) -> ParseState {
         match res {
             // in such case there is no else
             RepetitivePatternMatchingRes::Nomatch => {
-                return ParseState::Finished;
+                // next iteratioh
+                // i is already incremented
+                continue;
             }
             RepetitivePatternMatchingRes::MatchUntil(num) => match num % 4 {
                 0 => {
@@ -1054,7 +1052,7 @@ fn parse_if(tree: &mut ParseTreeUnfinshed) -> ParseState {
         // construct the tree
         for _ in 0..num_of_elif_stmt {
             // iterate thorugh each of the else if stmt
-            // tree[i] is else, remove it
+            // tree[i] is else in `else if`, remove it
             tree.remove(i);
             // NOTE: now tree[i] is if
             AST_Node::arc_mutex_append_child(tree[i].clone(), tree[i + 1].clone());
@@ -1075,6 +1073,7 @@ fn parse_if(tree: &mut ParseTreeUnfinshed) -> ParseState {
             || AST_Node::get_AST_Type_from_arc(tree[i].clone())
                 != AST_Type::Unparsed(TokenType::ELSE)
         {
+            // next iteratioh
             i += 1;
             continue;
         }
@@ -1092,7 +1091,10 @@ fn parse_if(tree: &mut ParseTreeUnfinshed) -> ParseState {
             ));
         }
 
+        // handle else
+
         AST_Node::arc_mutex_append_child(tree[i].clone(), tree[i + 1].clone());
+        AST_Node::set_arc_mutex_AST_Type(tree[i].clone(), AST_Type::Stmt(StmtType::Else));
         AST_Node::arc_mutex_append_child(tree[root_idx].clone(), tree[i].clone());
 
         tree.remove(i + 1);

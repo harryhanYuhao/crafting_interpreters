@@ -1,3 +1,8 @@
 if true {
-	print("true!")
+	print("aha!")
 }
+
+if true {
+	print("aha!")
+}
+

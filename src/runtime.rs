@@ -773,8 +773,8 @@ fn exec_braced_stmt(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox>
 ///           |-((    LEFT_PAREN 2:7)      AST_Type::Expr(Paren)
 ///              |-(true! STRING 2:8)      AST_Type::Expr(Normal)
 ///
-/// for else if and else block, they will be parsed as these: 
-/// ```lox 
+/// for else if and else block, they will be parsed as these:
+/// ```lox
 ///if true {
 ///	   var a = 1
 ///} else if true {
@@ -834,19 +834,21 @@ fn exec_if_stmt(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
         ));
     }
 
-    // check is the second expr braced
-    if AST_Node::get_AST_Type_from_arc(children[1].clone()) != AST_Type::Stmt(StmtType::Braced) {
-        return Err(ErrorLox::from_arc_mutex_ast_node(
-            node.clone(),
-            "Expected braced stmt after if",
-        ));
-    }
+    AST_Node::error_handle_check_type_arc(
+        children[1].clone(),
+        AST_Type::Stmt(StmtType::Braced),
+        "Expected braced stmt after if",
+    )?;
 
     if condition.get_bool() {
         return exec_braced_stmt(children[1].clone());
     } else {
         for index in 2..children.len() {
+            match AST_Node::get_AST_Type_from_arc(children[index].clone()) {
+                AST_Type::Stmt(StmtType::Elseif) => {}
 
+                _ => {}
+            }
         }
         return Ok(LoxVariable::empty());
     }

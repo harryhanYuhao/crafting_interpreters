@@ -1,4 +1,5 @@
 //! The tree struct defined here is the abstract syntax tree
+use crate::err_lox::ErrorLox;
 use crate::interpreter::token::{self, Token, TokenType};
 use rand::Rng;
 use std::convert::From;
@@ -22,6 +23,7 @@ pub enum StmtType {
     Declaration,
     Compound,
     If,
+    Else,
     Elseif,
     While,
     PlusEqual,
@@ -64,6 +66,8 @@ impl AST_Type {
             AST_Type::Stmt(StmtType::Declaration),
             AST_Type::Stmt(StmtType::Compound),
             AST_Type::Stmt(StmtType::If),
+            AST_Type::Stmt(StmtType::Else),
+            AST_Type::Stmt(StmtType::Elseif),
             AST_Type::Stmt(StmtType::While),
             AST_Type::Stmt(StmtType::PlusEqual),
             AST_Type::Stmt(StmtType::MinusEqual),
@@ -106,6 +110,57 @@ pub struct AST_Node {
 }
 
 impl AST_Node {
+    /// check if the node is of the type AST_Type,
+    /// if not, return ErrorLox with description
+    pub(crate) fn error_handle_check_type_arc(
+        node: Arc<Mutex<AST_Node>>,
+        AST_Type: AST_Type,
+        additional_err_description: &str,
+    ) -> Result<(), ErrorLox> {
+        let node_type = AST_Node::get_AST_Type_from_arc(node.clone());
+        if node_type != AST_Type {
+            return Err(ErrorLox::from_arc_mutex_ast_node(
+                node.clone(),
+                &format!(
+                    "Expected {AST_Type:?}, found {node_type:?}. {additional_err_description}",
+                ),
+            ));
+        }
+        Ok(())
+    }
+
+    /// check if the number of the children of the node is children.len(),
+    /// and check
+    pub(crate) fn error_handle_check_children_num_and_type_arc(
+        node: Arc<Mutex<AST_Node>>,
+        children_types: Vec<AST_Type>,
+        additional_err_description: &str,
+    ) -> Result<(), ErrorLox> {
+        let children = AST_Node::arc_mutex_get_children(node.clone());
+        if children.len() != children_types.len() {
+            return Err(ErrorLox::from_arc_mutex_ast_node(
+                node.clone(),
+                &format!(
+                    "Expected {} children, found {}. {additional_err_description}",
+                    children_types.len(),
+                    children.len()
+                ),
+            ));
+        }
+
+        for i in 0..children.len() {
+            AST_Node::error_handle_check_type_arc(
+                children[i].clone(),
+                children_types[i].clone(),
+                additional_err_description,
+            )?;
+        }
+
+        Ok(())
+    }
+
+    // pub(crate) fn
+
     pub(crate) fn is_stmt(&self) -> bool {
         match self.AST_Type {
             AST_Type::Stmt(_) => return true,

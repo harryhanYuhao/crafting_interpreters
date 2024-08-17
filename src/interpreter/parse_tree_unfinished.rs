@@ -151,6 +151,34 @@ impl ParseTreeUnfinshed {
             init_len - length,
         )
     }
+
+    pub(crate) fn error_handle_tree_index_type(
+        &self,
+        i: usize,
+        types: &[AST_Type],
+        err_info: &str,
+    ) -> Result<(), ErrorLox> {
+        let length = self.len();
+        if i >= length - 1 || !AST_Node::arc_belongs_to_AST_type(self[i].clone(), types) {
+            let error_idx: usize;
+            let error_message: String;
+            if i > length - 1 {
+                error_idx = length - 1;
+                error_message = format!("Expected {types:?}, found nothing. {err_info}",);
+            } else {
+                error_message = format!(
+                    "Expected {types:?}, found {:?}. {err_info}",
+                    AST_Node::get_AST_Type_from_arc(self[i].clone())
+                );
+                error_idx = i;
+            }
+            return Err(ErrorLox::from_arc_mutex_ast_node(
+                self[error_idx].clone(),
+                &error_message,
+            ));
+        }
+        Ok(())
+    }
 }
 
 impl FromIterator<Arc<Mutex<AST_Node>>> for ParseTreeUnfinshed {
