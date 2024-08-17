@@ -138,6 +138,33 @@ fn lox_divide(left: &LoxVariable, right: &LoxVariable) -> Result<LoxVariable, Er
     }
 }
 
+fn lox_modula(left: &LoxVariable, right: &LoxVariable) -> Result<LoxVariable, ErrorLox> {
+    match left.get_type() {
+        LoxVariableType::NUMBER(l) => {
+            if !right.is_number() {
+                return Err(ErrorLox::from_lox_variable(
+                    right,
+                    "Expected NUMBER type for right operand",
+                ));
+            } else {
+                // SUCCESS CASE
+                let num = right.get_number();
+                return Ok(LoxVariable::new(
+                    None,
+                    LoxVariableType::NUMBER(l % num),
+                    left.get_ref_node(),
+                ));
+            }
+        }
+        _ => {
+            return Err(ErrorLox::from_lox_variable(
+                left,
+                "Expected NUMBER type for left operand",
+            ));
+        }
+    }
+}
+
 fn lox_negate(variable: &LoxVariable) -> Result<LoxVariable, ErrorLox> {
     match variable.get_type() {
         LoxVariableType::NUMBER(n) => {
@@ -432,6 +459,11 @@ fn eval_expr_normal(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox>
                     let right = eval_expr(children[1].clone()).unwrap();
                     return lox_divide(&left, &right);
                 }
+                TokenType::PERCENT => {
+                    let left = eval_expr(children[0].clone()).unwrap();
+                    let right = eval_expr(children[1].clone()).unwrap();
+                    return lox_modula(&left, &right);
+                }
                 TokenType::GREATER => {
                     let left = eval_expr(children[0].clone()).unwrap();
                     let right = eval_expr(children[1].clone()).unwrap();
@@ -446,6 +478,11 @@ fn eval_expr_normal(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox>
                     let left = eval_expr(children[0].clone()).unwrap();
                     let right = eval_expr(children[1].clone()).unwrap();
                     return lox_equal_equal(&left, &right);
+                }
+                TokenType::BANG_EQUAL => {
+                    let left = eval_expr(children[0].clone()).unwrap();
+                    let right = eval_expr(children[1].clone()).unwrap();
+                    return lox_negate(&lox_equal_equal(&left, &right)?);
                 }
                 TokenType::LESS => {
                     let left = eval_expr(children[0].clone()).unwrap();
@@ -635,6 +672,53 @@ fn exec_assignment(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> 
     Ok(variable.clone())
 }
 
+fn exec_something_equal(
+    node: Arc<Mutex<AST_Node>>,
+    lox_fun: fn(&LoxVariable, &LoxVariable) -> Result<LoxVariable, ErrorLox>,
+) -> Result<LoxVariable, ErrorLox> {
+    let children = AST_Node::arc_mutex_get_children(node.clone());
+    if children.len() != 2 {
+        return Err(ErrorLox::from_arc_mutex_ast_node(
+            node.clone(),
+            "Expected 2 children, likely a parsing error",
+        ));
+    }
+
+    let left = children[0].clone();
+    let right = children[1].clone();
+
+    let lexeme = AST_Node::get_token_lexeme_arc_mutex(left.clone());
+    let right = eval_expr(right.clone())?;
+
+    let variable = stack_get_variable(&lexeme, left.clone())?;
+    let mut variable = variable.lock().unwrap();
+
+    let res = lox_fun(&variable, &right)?;
+    variable.set_type(res.get_type());
+
+    Ok(variable.clone())
+}
+
+fn exec_plus_equal(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
+    return exec_something_equal(node, lox_add);
+}
+
+fn exec_minus_equal(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
+    return exec_something_equal(node, lox_minus);
+}
+
+fn exec_star_equal(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
+    return exec_something_equal(node, lox_multiply);
+}
+
+fn exec_slash_equal(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
+    return exec_something_equal(node, lox_divide);
+}
+
+fn exec_percent_equal(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
+    return exec_something_equal(node, lox_modula);
+}
+
 // var a = 1 will be parsed as:
 // |-(=    EQUAL 1:7)      AST_Type::Stmt(Declaration)
 //    |-(=    EQUAL 1:7)      AST_Type::Stmt(Assignment)
@@ -688,6 +772,44 @@ fn exec_braced_stmt(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox>
 ///        |-(print IDENTIFIER 2:2)      AST_Type::Expr(Function)
 ///           |-((    LEFT_PAREN 2:7)      AST_Type::Expr(Paren)
 ///              |-(true! STRING 2:8)      AST_Type::Expr(Normal)
+///
+/// for else if and else block, they will be parsed as these: 
+/// ```lox 
+///if true {
+///	   var a = 1
+///} else if true {
+///	   var a = 2
+///} else if true {
+///	   var a = 2
+///} else {
+///	   1
+///}
+/// ```
+///(if   IF 1:1)      AST_Type::Stmt(If)
+///|-(true TRUE 1:4)      AST_Type::Expr(Normal)
+///|-({    LEFT_BRACE 1:9)      AST_Type::Stmt(Braced)
+///|  |-(=    EQUAL 2:8)      AST_Type::Stmt(Declaration)
+///|     |-(=    EQUAL 2:8)      AST_Type::Stmt(Assignment)
+///|        |-(a    IDENTIFIER 2:6)      AST_Type::Identifier
+///|        |-(1    NUMBER 2:10)      AST_Type::Expr(Normal)
+///|-(if   IF 3:8)      AST_Type::Stmt(Elseif)
+///|  |-(true TRUE 3:11)      AST_Type::Expr(Normal)
+///|  |-({    LEFT_BRACE 3:16)      AST_Type::Stmt(Braced)
+///|     |-(=    EQUAL 4:8)      AST_Type::Stmt(Declaration)
+///|        |-(=    EQUAL 4:8)      AST_Type::Stmt(Assignment)
+///|           |-(a    IDENTIFIER 4:6)      AST_Type::Identifier
+///|           |-(2    NUMBER 4:10)      AST_Type::Expr(Normal)
+///|-(if   IF 7:2)      AST_Type::Stmt(Elseif)
+///|  |-(true TRUE 7:5)      AST_Type::Expr(Normal)
+///|  |-({    LEFT_BRACE 7:10)      AST_Type::Stmt(Braced)
+///|     |-(=    EQUAL 8:8)      AST_Type::Stmt(Declaration)
+///|        |-(=    EQUAL 8:8)      AST_Type::Stmt(Assignment)
+///|           |-(a    IDENTIFIER 8:6)      AST_Type::Identifier
+///|           |-(2    NUMBER 8:10)      AST_Type::Expr(Normal)
+///|-(else ELSE 9:3)      AST_Type::Unparsed(ELSE)
+///  |-({    LEFT_BRACE 9:8)      AST_Type::Stmt(Braced)
+///     |-(\xa  STMT_SEP 11:0)      AST_Type::Stmt(Normal)
+///        |-(1    NUMBER 10:2)      AST_Type::Expr(Normal)
 fn exec_if_stmt(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
     let children = AST_Node::arc_mutex_get_children(node.clone());
     if children.len() < 2 {
@@ -723,6 +845,9 @@ fn exec_if_stmt(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
     if condition.get_bool() {
         return exec_braced_stmt(children[1].clone());
     } else {
+        for index in 2..children.len() {
+
+        }
         return Ok(LoxVariable::empty());
     }
 }
@@ -779,6 +904,7 @@ fn exec_while_stmt(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> 
     }
     Ok(res)
 }
+
 pub fn run(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
     match AST_Node::get_AST_Type_from_arc(tree.clone()) {
         AST_Type::Expr(ExprType::Normal)
@@ -798,6 +924,21 @@ pub fn run(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
         }
         AST_Type::Stmt(StmtType::Assignment) => {
             return exec_assignment(tree.clone());
+        }
+        AST_Type::Stmt(StmtType::PlusEqual) => {
+            return exec_plus_equal(tree.clone());
+        }
+        AST_Type::Stmt(StmtType::MinusEqual) => {
+            return exec_minus_equal(tree.clone());
+        }
+        AST_Type::Stmt(StmtType::StarEqual) => {
+            return exec_star_equal(tree.clone());
+        }
+        AST_Type::Stmt(StmtType::SlashEqual) => {
+            return exec_slash_equal(tree.clone());
+        }
+        AST_Type::Stmt(StmtType::PercentEqual) => {
+            return exec_percent_equal(tree.clone());
         }
         AST_Type::Stmt(StmtType::Declaration) => {
             return exec_declaration(tree.clone());

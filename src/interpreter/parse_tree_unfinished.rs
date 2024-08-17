@@ -62,7 +62,7 @@ impl ParseTreeUnfinshed {
     pub fn get_finished_node(&self) -> Result<Option<Arc<Mutex<AST_Node>>>, ErrorLox> {
         if self.content.len() > 1 {
             return Err(ErrorLox::from_arc_mutex_ast_node(
-                self[0].clone(),
+                self[1].clone(),
                 "Internal Error: Parse Tree is unfinished when calling get_finished_node",
             ));
         }

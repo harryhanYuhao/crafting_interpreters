@@ -28,6 +28,7 @@ pub enum StmtType {
     MinusEqual,
     StarEqual,
     SlashEqual,
+    PercentEqual,
     FunctionDef,
 }
 
@@ -68,6 +69,8 @@ impl AST_Type {
             AST_Type::Stmt(StmtType::MinusEqual),
             AST_Type::Stmt(StmtType::StarEqual),
             AST_Type::Stmt(StmtType::SlashEqual),
+            AST_Type::Stmt(StmtType::PercentEqual),
+            AST_Type::Stmt(StmtType::FunctionDef),
         ]
     }
 }

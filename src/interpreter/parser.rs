@@ -190,6 +190,12 @@ fn real_parse(tree: &mut ParseTreeUnfinshed) -> ParseState {
         AST_Type::Stmt(StmtType::SlashEqual),
     ));
 
+    HandleParseState!(parse_assignment_like(
+        tree,
+        vec![AST_Type::Unparsed(TokenType::PERCENT_EQUAL)],
+        AST_Type::Stmt(StmtType::PercentEqual),
+    ));
+
     // parse var a = b;
     HandleParseState!(parse_prefix(
         tree,

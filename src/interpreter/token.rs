@@ -23,6 +23,7 @@ pub enum TokenType {
     STAR, // copulative
     STAR_EQUAL,
     PERCENT, // copulative
+    PERCENT_EQUAL,
     //One or two character tokens.
     PLUS,
     PLUS_EQUAL,
@@ -78,6 +79,7 @@ impl fmt::Debug for TokenType {
             TokenType::STAR => write!(f, "STAR"),
             TokenType::STAR_EQUAL => write!(f, "STAR_EQUAL"),
             TokenType::PERCENT => write!(f, "PERCENT"),
+            TokenType::PERCENT_EQUAL => write!(f, "PERCENT_EQUAL"),
             TokenType::PLUS => write!(f, "PLUS"),
             TokenType::PLUS_EQUAL => write!(f, "PLUS_EQUAL"),
             TokenType::MINUS => write!(f, "MINUS"),
@@ -115,7 +117,7 @@ impl fmt::Debug for TokenType {
 }
 
 // This list only used for generating random TokenType from index
-static TOKEN_TYPE_LIST: [TokenType; 45] = [
+static TOKEN_TYPE_LIST: [TokenType; 46] = [
     TokenType::LEFT_PAREN,
     TokenType::RIGHT_PAREN,
     TokenType::LEFT_BRACE,
@@ -130,6 +132,7 @@ static TOKEN_TYPE_LIST: [TokenType; 45] = [
     TokenType::STAR,        // copulative
     TokenType::STAR_EQUAL,  // copulative
     TokenType::PERCENT,     // copulative
+    TokenType::PERCENT_EQUAL,
     TokenType::PLUS,
     TokenType::PLUS_EQUAL,
     TokenType::MINUS, // copulative

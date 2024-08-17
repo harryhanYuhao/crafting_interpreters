@@ -204,13 +204,16 @@ pub(crate) fn scan_iteration(
             );
         }
         '%' => {
-            token = Some(Token::new(
+            token = two_character_check(
+                &mut poke,
+                '='.into(),
                 TokenType::PERCENT,
-                String::from(source_vec[start]),
+                TokenType::PERCENT_EQUAL,
                 *line,
                 *column,
+                &source_vec,
                 source_file,
-            ))
+            );
         }
         '-' => {
             token = two_character_check(
