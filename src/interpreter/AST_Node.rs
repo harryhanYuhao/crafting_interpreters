@@ -129,11 +129,28 @@ impl AST_Node {
         Ok(())
     }
 
+    pub(crate) fn error_handle_check_type_vec_arc(
+        node: Arc<Mutex<AST_Node>>,
+        AST_Types: &[AST_Type],
+        additional_err_description: &str,
+    ) -> Result<(), ErrorLox> {
+        if !AST_Node::arc_belongs_to_AST_type(node.clone(), AST_Types) {
+            let node_type = AST_Node::get_AST_Type_from_arc(node.clone());
+            return Err(ErrorLox::from_arc_mutex_ast_node(
+                node.clone(),
+                &format!(
+                    "Expected {AST_Types:?}, found {node_type:?}. {additional_err_description}",
+                ),
+            ));
+        }
+        Ok(())
+    }
+
     /// check if the number of the children of the node is children.len(),
     /// and check
     pub(crate) fn error_handle_check_children_num_and_type_arc(
         node: Arc<Mutex<AST_Node>>,
-        children_types: Vec<AST_Type>,
+        children_types: &[AST_Type],
         additional_err_description: &str,
     ) -> Result<(), ErrorLox> {
         let children = AST_Node::arc_mutex_get_children(node.clone());

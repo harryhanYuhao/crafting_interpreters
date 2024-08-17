@@ -811,42 +811,79 @@ fn exec_braced_stmt(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox>
 ///     |-(\xa  STMT_SEP 11:0)      AST_Type::Stmt(Normal)
 ///        |-(1    NUMBER 10:2)      AST_Type::Expr(Normal)
 fn exec_if_stmt(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
+    // check if node fits the grammar rule of if and else if statement. If not, return error
+    // If it passes the check, evaluate the condition of if and return Ok(condition).
+    // To eval the brace, do this
+    // let children = AST_Node::arc_mutex_get_children(node.clone());
+    // if error_handle_if_stmt(node.clone())? {
+    //     return exec_braced_stmt(children[1].clone());
+    // }
+    fn error_handle_if_stmt(node: Arc<Mutex<AST_Node>>) -> Result<bool, ErrorLox> {
+        if !AST_Node::arc_belongs_to_AST_type(
+            node.clone(),
+            &vec![
+                AST_Type::Stmt(StmtType::If),
+                AST_Type::Stmt(StmtType::Elseif),
+            ],
+        ) {
+            return Err(ErrorLox::from_arc_mutex_ast_node(
+                node.clone(),
+                "Expected If or else if statement. Likely internal parsing or runtime error",
+            ));
+        }
+
+        let children = AST_Node::arc_mutex_get_children(node.clone());
+        if children.len() < 2 {
+            return Err(ErrorLox::from_arc_mutex_ast_node(
+                node.clone(),
+                "If statement requires a condition and braced statement. Only fonnd one",
+            ));
+        }
+        if !AST_Node::is_arc_mutex_expr(children[0].clone()) {
+            return Err(ErrorLox::from_arc_mutex_ast_node(
+                node.clone(),
+                "Expected boolean expression after if",
+            ));
+        }
+
+        // error check and eval the condition
+        let condition = eval_expr(children[0].clone())?;
+        if !condition.is_bool() {
+            return Err(ErrorLox::from_lox_variable(
+                &condition,
+                "Expected boolean expression after if",
+            ));
+        }
+
+        AST_Node::error_handle_check_type_arc(
+            children[1].clone(),
+            AST_Type::Stmt(StmtType::Braced),
+            "Expected braced stmt after if",
+        )?;
+        Ok(condition.get_bool())
+    }
+
     let children = AST_Node::arc_mutex_get_children(node.clone());
-    if children.len() < 2 {
-        return Err(ErrorLox::from_arc_mutex_ast_node(
-            node.clone(),
-            "If statement requires a condition and braced statement. Only fonnd one",
-        ));
-    }
-    if !AST_Node::is_arc_mutex_expr(children[0].clone()) {
-        return Err(ErrorLox::from_arc_mutex_ast_node(
-            node.clone(),
-            "Expected boolean expression after if",
-        ));
-    }
-
-    // error check and eval the condition
-    let condition = eval_expr(children[0].clone())?;
-    if !condition.is_bool() {
-        return Err(ErrorLox::from_lox_variable(
-            &condition,
-            "Expected boolean expression after if",
-        ));
-    }
-
-    AST_Node::error_handle_check_type_arc(
-        children[1].clone(),
-        AST_Type::Stmt(StmtType::Braced),
-        "Expected braced stmt after if",
-    )?;
-
-    if condition.get_bool() {
+    if error_handle_if_stmt(node.clone())? {
         return exec_braced_stmt(children[1].clone());
     } else {
         for index in 2..children.len() {
             match AST_Node::get_AST_Type_from_arc(children[index].clone()) {
-                AST_Type::Stmt(StmtType::Elseif) => {}
-
+                AST_Type::Stmt(StmtType::Else) => {
+                    AST_Node::error_handle_check_children_num_and_type_arc(
+                        children[index].clone(),
+                        &vec![AST_Type::Stmt(StmtType::Braced)],
+                        "",
+                    )?;
+                    let else_children = AST_Node::arc_mutex_get_children(children[index].clone());
+                    return exec_braced_stmt(else_children[0].clone());
+                }
+                AST_Type::Stmt(StmtType::Elseif) => {
+                    let elseif_children = AST_Node::arc_mutex_get_children(children[index].clone());
+                    if error_handle_if_stmt(children[index].clone())? {
+                        return exec_braced_stmt(elseif_children[1].clone());
+                    }
+                }
                 _ => {}
             }
         }

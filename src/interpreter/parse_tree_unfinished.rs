@@ -9,6 +9,7 @@ use crate::err_lox::*;
 use crate::interpreter::parser::ParseState;
 use crate::interpreter::token::{self, Token, TokenArcVec, TokenType};
 
+use log::debug;
 pub struct ParseTreeUnfinshed {
     content: Vec<Arc<Mutex<AST_Node>>>,
 }
@@ -152,14 +153,17 @@ impl ParseTreeUnfinshed {
         )
     }
 
-    pub(crate) fn error_handle_tree_index_type(
+    // check if tree[i] exist (ie tree[i] is not out of bound)
+    // and if tree[i] is in types
+    // if not, return error
+    pub(crate) fn error_handle_tree_i_is_in_types(
         &self,
         i: usize,
         types: &[AST_Type],
         err_info: &str,
     ) -> Result<(), ErrorLox> {
         let length = self.len();
-        if i >= length - 1 || !AST_Node::arc_belongs_to_AST_type(self[i].clone(), types) {
+        if i > length - 1 || !AST_Node::arc_belongs_to_AST_type(self[i].clone(), types) {
             let error_idx: usize;
             let error_message: String;
             if i > length - 1 {

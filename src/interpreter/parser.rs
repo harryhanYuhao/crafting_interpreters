@@ -35,6 +35,7 @@ macro_rules! HandleParseState {
     };
 }
 
+// TODO: get better name
 macro_rules! handle_result_none_errorlox_for_parsestate {
     ($res:expr) => {
         match $res {
@@ -591,14 +592,14 @@ fn parse_ternary_left_assoc(
             i += 1;
             continue;
         }
+
         // check the third toklen
-        if !AST_Node::arc_belongs_to_AST_type(tree[i + 2].clone(), right_ast_types) {
-            let e = ErrorLox::from_arc_mutex_ast_node(
-                tree[i + 1].clone(),
-                &format!("expected {:?}", right_ast_types),
-            );
-            return ParseState::Err(e);
-        }
+        handle_result_none_errorlox_for_parsestate!(tree.error_handle_tree_i_is_in_types(
+            i + 2,
+            right_ast_types,
+            ""
+        ));
+
         // Construct the tree
         {
             let mut root = tree[i + 1].lock().unwrap();
@@ -858,14 +859,25 @@ fn parse_ternary_stmt_like_while(
             continue;
         }
         delete_consec_stmt_sep_from_idx_inclusive(tree, i + 1);
-        if !AST_Node::arc_belongs_to_AST_type(tree[i + 1].clone(), left_ast_types) {
-            return ParseState::Err(ErrorLox::from_arc_mutex_ast_node(tree[i].clone(), error_1));
-        }
+
+        handle_result_none_errorlox_for_parsestate!(tree.error_handle_tree_i_is_in_types(
+            i + 1,
+            left_ast_types,
+            error_1
+        ));
+
         delete_consec_stmt_sep_from_idx_inclusive(tree, i + 2);
         // check the third toklen
-        if !AST_Node::arc_belongs_to_AST_type(tree[i + 2].clone(), right_ast_types) {
-            return ParseState::Err(ErrorLox::from_arc_mutex_ast_node(tree[i].clone(), error_2));
-        }
+        handle_result_none_errorlox_for_parsestate!(tree.error_handle_tree_i_is_in_types(
+            i + 2,
+            right_ast_types,
+            error_2
+        ));
+
+        // if !AST_Node::arc_belongs_to_AST_type(tree[i + 2].clone(), right_ast_types) {
+        //     return ParseState::Err(ErrorLox::from_arc_mutex_ast_node(tree[i].clone(), error_2));
+        // }
+        
         // Construct the tree
         {
             let mut root = tree[i].lock().unwrap();
@@ -970,7 +982,7 @@ fn parse_if(tree: &mut ParseTreeUnfinshed) -> ParseState {
 
         // NOTE:: tree[i] is if
         delete_stmt_sep_adjust_len!(tree, i + 1, length);
-        handle_result_none_errorlox_for_parsestate!(tree.error_handle_tree_index_type(
+        handle_result_none_errorlox_for_parsestate!(tree.error_handle_tree_i_is_in_types(
             i + 1,
             &RVALUES,
             "Expected rvalues after if"
@@ -978,7 +990,7 @@ fn parse_if(tree: &mut ParseTreeUnfinshed) -> ParseState {
 
         // after RVALUE, braced stmt may be on the new line
         delete_stmt_sep_adjust_len!(tree, i + 2, length);
-        handle_result_none_errorlox_for_parsestate!(tree.error_handle_tree_index_type(
+        handle_result_none_errorlox_for_parsestate!(tree.error_handle_tree_i_is_in_types(
             i + 2,
             &vec![AST_Type::Stmt(StmtType::Braced)],
             "Expected braced stmt after if"
@@ -1073,26 +1085,22 @@ fn parse_if(tree: &mut ParseTreeUnfinshed) -> ParseState {
             || AST_Node::get_AST_Type_from_arc(tree[i].clone())
                 != AST_Type::Unparsed(TokenType::ELSE)
         {
-            // next iteratioh
-            i += 1;
+            // next iteration
+            // i += 1;
             continue;
         }
 
         // now tree[i] is else,
+        // error!("ANUOINNONN ELSE: {:?}", tree[i]);
+        // we expect else {}
         delete_stmt_sep_adjust_len!(tree, i, length);
-        // else {}
-        if i + 1 >= length
-            || AST_Node::get_AST_Type_from_arc(tree[i + 1].clone())
-                != AST_Type::Stmt(StmtType::Braced)
-        {
-            return ParseState::Err(ErrorLox::from_arc_mutex_ast_node(
-                tree[i + 1].clone(),
-                &format!("Expected RVALUES after if",),
-            ));
-        }
+        handle_result_none_errorlox_for_parsestate!(tree.error_handle_tree_i_is_in_types(
+            i + 1,
+            &vec![AST_Type::Stmt(StmtType::Braced)],
+            "Expected rvalues after if"
+        ));
 
         // handle else
-
         AST_Node::arc_mutex_append_child(tree[i].clone(), tree[i + 1].clone());
         AST_Node::set_arc_mutex_AST_Type(tree[i].clone(), AST_Type::Stmt(StmtType::Else));
         AST_Node::arc_mutex_append_child(tree[root_idx].clone(), tree[i].clone());
@@ -1100,6 +1108,7 @@ fn parse_if(tree: &mut ParseTreeUnfinshed) -> ParseState {
         tree.remove(i + 1);
         tree.remove(i);
         length -= 2;
+        // is it ?
         i += 2;
     }
     ParseState::Finished

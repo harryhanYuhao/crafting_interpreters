@@ -58,13 +58,13 @@ pub fn run_file(path: &str) -> Result<(), ErrorLox> {
 
     info!("START EXECUTION!");
     let tree = parse_tree.get_finished_node()?;
-    let tree = tree.unwrap();
-
-    let res = run(tree);
+    match tree {
+        Some(node) => {
+            run(node)?;
+        }
+        _ => {}
+    }
     // println!("{res:?}");
-    res?;
-    
-
     Ok(())
 }
 
