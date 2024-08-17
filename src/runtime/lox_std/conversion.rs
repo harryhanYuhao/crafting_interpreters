@@ -12,9 +12,6 @@ fn to_string_runtime(variable: &LoxVariable) -> String {
         LoxVariableType::NUMBER(a) => {
             string = format!("{a}");
         }
-        LoxVariableType::STD_FUNCTION(a) => {
-            string = format!("{a:?}");
-        }
         LoxVariableType::STRING(s) => {
             string = s.clone();
         }
@@ -29,6 +26,12 @@ fn to_string_runtime(variable: &LoxVariable) -> String {
             res.pop();
             res.push(')');
             string = res;
+        }
+        LoxVariableType::STD_FUNCTION(a) => {
+            string = format!("{a:?}");
+        }
+        LoxVariableType::LOX_FUNCTION(_) => {
+            string = format!("lox function: {}", variable.get_string());
         }
     }
     string

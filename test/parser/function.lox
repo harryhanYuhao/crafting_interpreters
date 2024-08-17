@@ -1,4 +1,5 @@
 fn hello (a,b){
 	a + b
 }
-hello (1, a)
+// var a = 1
+// hello (1, a)

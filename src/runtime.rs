@@ -8,7 +8,7 @@ pub mod stack;
 use crate::err_lox::ErrorLox;
 use crate::interpreter::token::{Token, TokenType};
 use crate::interpreter::AST_Node::{AST_Node, AST_Type, ExprType, StmtType};
-use lox_variable::{LoxVariable, LoxVariableType};
+use lox_variable::{LoxFunction, LoxVariable, LoxVariableType};
 use std::env::var;
 use std::sync::{Arc, Mutex};
 
@@ -944,6 +944,10 @@ fn exec_while_stmt(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> 
     Ok(res)
 }
 
+// TODO: UNFINISHED
+pub fn exec_function_definition(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
+    Ok(LoxVariable::empty())
+}
 pub fn run(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
     match AST_Node::get_AST_Type_from_arc(tree.clone()) {
         AST_Type::Expr(ExprType::Normal)
@@ -990,6 +994,9 @@ pub fn run(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
         }
         AST_Type::Stmt(StmtType::While) => {
             return exec_while_stmt(tree.clone());
+        }
+        AST_Type::Stmt(StmtType::FunctionDef) => {
+            return exec_function_definition(tree.clone());
         }
         res => {
             println!("Unexecuted: {:?}", res);

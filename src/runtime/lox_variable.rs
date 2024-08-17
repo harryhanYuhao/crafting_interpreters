@@ -1,8 +1,43 @@
-use crate::interpreter::AST_Node::AST_Node;
+use crate::err_lox::ErrorLox;
+use crate::interpreter::AST_Node::{AST_Node, AST_Type, StmtType};
 use std::fmt;
 use std::sync::{Arc, Mutex};
 
-//
+#[derive(Debug, Clone)]
+pub struct LoxFunction {
+    lexemes: Vec<String>,
+    content: Arc<Mutex<AST_Node>>,
+}
+
+impl LoxFunction {
+    fn from_ast(
+        tuple: Arc<Mutex<AST_Node>>,
+        execute_block: Arc<Mutex<AST_Node>>,
+    ) -> Result<Self, ErrorLox> {
+        AST_Node::error_handle_check_type_arc(
+            tuple.clone(),
+            AST_Type::Tuple,
+            "expected tuple for function definition",
+        )?;
+        AST_Node::error_handle_check_type_arc(
+            execute_block.clone(),
+            AST_Type::Stmt(StmtType::Braced),
+            "expected braced stmt for function definition",
+        )?;
+
+        let mut lexemes: Vec<String> = vec![];
+        let children_tuple = AST_Node::arc_mutex_get_children(tuple.clone());
+        for i in children_tuple {
+            lexemes.push(AST_Node::get_token_lexeme_arc_mutex(i.clone()));
+        }
+
+        Ok(LoxFunction {
+            lexemes,
+            content: execute_block,
+        })
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum LoxVariableType {
     NUMBER(f64),
@@ -11,6 +46,8 @@ pub enum LoxVariableType {
     #[allow(non_camel_case_types)]
     // STD_Function, the input is expected to be a tuple
     STD_FUNCTION(fn(&LoxVariable) -> LoxVariable),
+    #[allow(non_camel_case_types)]
+    LOX_FUNCTION(LoxFunction),
     TUPLE(Vec<Box<LoxVariable>>),
     NONE,
 }
