@@ -994,11 +994,15 @@ pub fn exec_function_definition(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariabl
 
     let lox_function = LoxFunction::from_ast(tuple, children[2].clone())?;
 
-    Ok(LoxVariable::new(
+    let funciton = LoxVariable::new(
         Some(identifier),
         LoxVariableType::LOX_FUNCTION(lox_function),
         Some(tree.clone()),
-    ))
+    );
+
+    stack::stack_push(funciton.clone());
+    stack::display_stack();
+    Ok(funciton)
 }
 
 pub fn run(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {

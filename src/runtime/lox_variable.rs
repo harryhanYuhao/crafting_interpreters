@@ -52,6 +52,37 @@ pub enum LoxVariableType {
     NONE,
 }
 
+impl fmt::Display for LoxVariableType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let res: String;
+        match self {
+            LoxVariableType::NUMBER(n) => {
+                res = format!("NUMBER: {n}");
+            }
+            LoxVariableType::BOOL(n) => {
+                res = format!("BOOL: {n}");
+            }
+            LoxVariableType::STRING(n) => {
+                res = format!("STRING: {n}");
+            }
+            LoxVariableType::STD_FUNCTION(_) => {
+                res = format!("STD FUNCTION");
+            }
+            LoxVariableType::LOX_FUNCTION(_) => {
+                res = format!("LOX FUNCTION");
+            }
+            // TODO: what is a good tuple display?
+            LoxVariableType::TUPLE(_) => {
+                res = format!("TUPLE");
+            }
+            LoxVariableType::NONE => {
+                res = format!("NONE");
+            }
+        }
+        write!(f, "{res}")
+    }
+}
+
 // a function is also considered a variable
 #[derive(Debug, Clone)]
 pub struct LoxVariable {
@@ -248,9 +279,9 @@ impl fmt::Display for LoxVariable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let id: String;
         match &self.identifier {
-            None => id = "NONAME".into(),
+            None => id = "RVALUE".into(),
             Some(s) => id = s.clone(),
         }
-        write!(f, "{}: {:?}", id, self.variable_type)
+        write!(f, "{:<10}: {}", id, self.variable_type)
     }
 }

@@ -24,6 +24,7 @@
 /// standard library exports the function lox_std::get_std() -> Vec<LoxVariable> that returns all the lox variable in the std.
 /// stack::Stack::init() call this function and append all into the std stack
 use std::collections::HashMap;
+use std::fmt;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
@@ -155,4 +156,25 @@ pub(crate) fn stack_pop_scope() {
     let stack = Stack::stack();
     let mut stack = stack.lock().unwrap();
     stack.pop_scope();
+}
+
+impl fmt::Display for Stack {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut res = String::new();
+        for (index, value) in self.content.iter().enumerate() {
+            res.push_str(&format!("===============\nSCOPE: {index}\n===============\n"));
+            for i in value.values() {
+                let entry = i.lock().unwrap();
+                res.push_str(&format!("{entry}\n"));
+            }
+        }
+        write!(f, "{res}")
+    }
+}
+
+pub(crate) fn display_stack() {
+    let stack = Stack::stack();
+    let stack = stack.lock().unwrap();
+    println!("{stack}");
+
 }
