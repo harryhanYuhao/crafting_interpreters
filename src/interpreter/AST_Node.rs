@@ -212,6 +212,8 @@ impl AST_Node {
     pub(crate) fn is_expr(&self) -> bool {
         match self.AST_Type {
             AST_Type::Expr(_) => return true,
+            AST_Type::Tuple => return true,
+            AST_Type::Identifier => return true,
             _ => return false,
         }
     }
@@ -232,6 +234,11 @@ impl AST_Node {
 
     pub(crate) fn get_token(&self) -> Arc<Mutex<Token>> {
         self.token.clone()
+    }
+
+    pub(crate) fn arc_mutex_get_token(node: Arc<Mutex<AST_Node>>) -> Arc<Mutex<Token>> {
+        let node = node.lock().unwrap();
+        node.token.clone()
     }
 
     pub(crate) fn set_AST_Type(&mut self, new_type: AST_Type) {
@@ -379,6 +386,22 @@ impl AST_Node {
         AST_Node {
             AST_Type,
             token: token.into(),
+            children: Vec::new(),
+        }
+    }
+
+    pub(crate) fn new_from_arc_token(AST_Type: AST_Type, token: Arc<Mutex<Token>>) -> Self {
+        AST_Node {
+            AST_Type,
+            token: token.into(),
+            children: Vec::new(),
+        }
+    }
+
+    pub(crate) fn new_from_ref(AST_Type: &AST_Type, token: &Token) -> Self {
+        AST_Node {
+            AST_Type: AST_Type.clone(),
+            token: token.clone().into(),
             children: Vec::new(),
         }
     }

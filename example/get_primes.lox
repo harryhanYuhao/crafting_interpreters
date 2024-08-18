@@ -1,0 +1,22 @@
+fn isprime(a) {
+	var res = true
+	var i = 2 
+	while (i < a) {
+		if (a % i == 0) {
+			res = false
+			print(a, "is not prime!")
+		}		
+		i += 1
+	}
+	res
+}
+
+print(isprime(1))
+
+//var i = 1 
+//while i < 100 {
+//	if (isprime(i)) {
+//		print(i, "is prime!") 
+//		i += 1
+//	} 
+//}

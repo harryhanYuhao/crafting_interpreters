@@ -823,11 +823,6 @@ fn parse_stmt_sep(tree: &mut ParseTreeUnfinshed) -> ParseState {
             tree.remove(i - 1);
             length -= 1;
             continue;
-            // return ParseState::Err(ErrorLox::from_arc_mutex_ast_node(
-            //     tree[i - 1].clone(),
-            //     "Unexpected Node, likely an internal error.",
-            //     source,
-            // ));
         }
         i += 1;
     }
@@ -877,7 +872,7 @@ fn parse_ternary_stmt_like_while(
         // if !AST_Node::arc_belongs_to_AST_type(tree[i + 2].clone(), right_ast_types) {
         //     return ParseState::Err(ErrorLox::from_arc_mutex_ast_node(tree[i].clone(), error_2));
         // }
-        
+
         // Construct the tree
         {
             let mut root = tree[i].lock().unwrap();

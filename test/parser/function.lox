@@ -1,8 +1,12 @@
 fn hello (a,b){
-	a + b
+	print(a, " + ", b, " = ", a+b)
+	1
 }
 
 fn none() {
+	print("aha!")
 }
-// var a = 1
-// hello (1, a)
+
+var a = 1
+print(hello (1, a))
+

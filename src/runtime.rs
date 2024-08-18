@@ -504,7 +504,21 @@ fn eval_expr_normal(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox>
     Ok(LoxVariable::empty())
 }
 
-// the input node shall be expr(function)
+/// the input node shall be expr(function)
+/// There are two kinds of function, std function and lox function
+/// because lox is only an interpreter, it has to rely on native rust function in some senarios (C
+/// function call, print, etc). These native functions are std function and are written purly in
+/// rust, but is also stored as lox_variable as the type STD_FUNCTION in stack.
+/// The lox_variable contains the function
+/// pointer to the native function which is executed at the runtime.
+/// The input for the function is LoxTuple. Errors (types of input, number of input, etc) are
+/// handled by the rust code at runtime.
+///
+/// lox also has function written purly in lox. These function are represented by the type
+/// LOX_FUNCTION, which contains lexemes and pointer to the block of stmt(brace) to be executed.
+/// At compile time, number of lexemes are checked, and the variables are evaluated and pushed to
+/// the new stack. The block of code is executed by calling run, and in the end the stack scope is
+/// popped.
 fn eval_expr_function(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
     if AST_Node::get_AST_Type_from_arc(node.clone()) != AST_Type::Expr(ExprType::Function) {
         return Err(ErrorLox::from_arc_mutex_ast_node(
@@ -512,27 +526,14 @@ fn eval_expr_function(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLo
             "eval_expr_function called on non-function, likely internal error",
         ));
     }
+    AST_Node::error_handle_check_children_num_and_type_arc(
+        node.clone(),
+        &vec![AST_Type::Expr(ExprType::Paren)],
+        "Error in function call, could be internal error",
+    )?;
     let children = AST_Node::arc_mutex_get_children(node.clone());
-    if children.len() != 1 {
-        return Err(ErrorLox::from_arc_mutex_ast_node(
-            node.clone(),
-            "Expected only one children, Likely a parsing error",
-        ));
-    } else if AST_Node::get_AST_Type_from_arc(children[0].clone())
-        != AST_Type::Expr(ExprType::Paren)
-    {
-        return Err(ErrorLox::from_arc_mutex_ast_node(
-            node.clone(),
-            "Expected expr(paren), likely a parsing error",
-        ));
-    }
 
     let function_input = eval_expr(children[0].clone())?;
-
-    // DEBUG: ERROR Handling
-    // let error = ErrorLox::from_lox_variable(&function_input, "aaa");
-    // println!("{error:?}");
-    // error.panic();
 
     // function input must be tuple
     let function_input = function_input.to_tuple();
@@ -543,8 +544,16 @@ fn eval_expr_function(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLo
     let function = stack_get_variable(&lexeme, node)?;
     let function = function.lock().unwrap();
 
-    let inner_function = function.get_function();
-    Ok(inner_function(&function_input))
+    match function.get_type() {
+        LoxVariableType::STD_FUNCTION(_) => {
+            return function.run_std_function(&function_input);
+        }
+        LoxVariableType::LOX_FUNCTION(_) => {
+            return function.run_lox_function(&function_input);
+        }
+        _ => {}
+    }
+    Ok(LoxVariable::empty())
 }
 
 fn eval_expr_paren(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
@@ -552,29 +561,27 @@ fn eval_expr_paren(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> 
     // child shall be expression
     let children = AST_Node::arc_mutex_get_children(node.clone());
     if children.len() == 0 {
+        // TODO: IT THIS THE PROPER WAY?
+        // If there is nothing to return, shall we return LoxVariable NONE?
         return Ok(LoxVariable::empty_from_arc_mutex_ast_node(node.clone()));
+    } else if children.len() == 1 {
+        let a = eval_expr(children[0].clone())?;
+        //     // DEBUG: line
+        // match &a {
+        //     Ok(o) => {
+        //         // println!("{o}");
+        //     }wh
+        //     Err(e) => {}
+        // }
+        return Ok(a);
     } else {
-        match children.len() {
-            1 => {
-                let a = eval_expr(children[0].clone());
-                //     // DEBUG: line
-                // match &a {
-                //     Ok(o) => {
-                //         // println!("{o}");
-                //     }
-                //     Err(e) => {}
-                // }
-                return a;
-            }
-            length => {
-                return Err(ErrorLox::from_arc_mutex_ast_node(
-                    node.clone(),
-                    &format!(
-                        "Expr(Paren) has more than one ({length}) children; likely a parsing error"
-                    ),
-                ))
-            }
-        };
+        return Err(ErrorLox::from_arc_mutex_ast_node(
+            node.clone(),
+            &format!(
+                "Expr(Paren) has more than one {} children; likely a parsing error",
+                children.len()
+            ),
+        ));
     }
 }
 
@@ -979,12 +986,29 @@ pub fn exec_function_definition(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariabl
     // the first child is the identifer
     let identifier = AST_Node::get_token_lexeme_arc_mutex(children[0].clone());
     // the second child is expr(paren), holding a tuple or nothing
-    let tuple: Arc<Mutex<AST_Node>>;
+    let mut tuple: Arc<Mutex<AST_Node>>;
     let expr_children = AST_Node::arc_mutex_get_children(children[1].clone());
     if expr_children.len() == 0 {
         tuple = AST_Node::dummy_node(AST_Type::Tuple).into();
     } else if expr_children.len() == 1 {
-        tuple = expr_children[0].clone();
+        // our later eval of the function expect a ast_node tuple as function input
+        // a, b will be parsed as a tuple,  but "a" will only be parsed as a variable.
+        // so we manually make a into a tuple
+        match AST_Node::get_AST_Type_from_arc(expr_children[0].clone()) {
+            AST_Type::Tuple => {
+                tuple = expr_children[0].clone();
+            }
+            _ => {
+                let mut tmp = AST_Node::new_from_ref(
+                    &AST_Type::Tuple,
+                    &AST_Node::arc_mutex_get_token(expr_children[0].clone())
+                        .lock()
+                        .unwrap(),
+                );
+                tmp.append_child(expr_children[0].clone());
+                tuple = Arc::new(Mutex::new(tmp));
+            }
+        }
     } else {
         return Err(ErrorLox::from_arc_mutex_ast_node(
             children[1].clone(),
@@ -1005,7 +1029,7 @@ pub fn exec_function_definition(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariabl
     Ok(funciton)
 }
 
-pub fn run(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
+pub(crate) fn run(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
     match AST_Node::get_AST_Type_from_arc(tree.clone()) {
         AST_Type::Expr(ExprType::Normal)
         | AST_Type::Expr(ExprType::Paren)

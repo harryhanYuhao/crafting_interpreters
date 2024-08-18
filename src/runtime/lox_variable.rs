@@ -1,5 +1,6 @@
 use crate::err_lox::ErrorLox;
 use crate::interpreter::AST_Node::{AST_Node, AST_Type, StmtType};
+use crate::runtime::{self, stack};
 use std::fmt;
 use std::sync::{Arc, Mutex};
 
@@ -16,8 +17,8 @@ impl LoxFunction {
     ) -> Result<Self, ErrorLox> {
         AST_Node::error_handle_check_type_arc(
             tuple.clone(),
-            AST_Type::Tuple,
-            "expected tuple for function definition",
+            AST_Type::Tuple, 
+            "expected tuple or identifer for function definition (LoxFunction::from_ast)",
         )?;
         AST_Node::error_handle_check_type_arc(
             execute_block.clone(),
@@ -35,6 +36,18 @@ impl LoxFunction {
             lexemes,
             content: execute_block,
         })
+    }
+
+    fn get_lexeme(&self) -> &[String] {
+        &(self.lexemes)
+    }
+
+    fn get_lexeme_length(&self) -> usize {
+        self.lexemes.len()
+    }
+
+    fn get_content(&self) -> Arc<Mutex<AST_Node>> {
+        self.content.clone()
     }
 }
 
@@ -142,7 +155,16 @@ impl LoxVariable {
     pub(crate) fn get_tuple_length(&self) -> Option<usize> {
         match &self.variable_type {
             LoxVariableType::TUPLE(vec) => {
-                return Some(vec.len());
+                let mut length = 0;
+                for i in vec.iter() {
+                    match i.get_type() {
+                        LoxVariableType::NONE => {}
+                        _ => {
+                            length += 1;
+                        }
+                    }
+                }
+                return Some(length);
             }
             _ => {
                 return None;
@@ -150,6 +172,8 @@ impl LoxVariable {
         }
     }
 
+    /// Return some(vec) if the variable is a tuple, vec holding the pointer to LoxVariables
+    /// Return none if the variable is not a tuple
     pub(crate) fn get_tuple_content(&self) -> Option<Vec<Box<LoxVariable>>> {
         match &self.variable_type {
             LoxVariableType::TUPLE(vec) => {
@@ -228,6 +252,55 @@ impl LoxVariable {
             }
         }
     }
+
+    pub(crate) fn run_std_function(&self, input: &LoxVariable) -> Result<LoxVariable, ErrorLox> {
+        if !input.is_tuple() {
+            return Err(ErrorLox::from_lox_variable(input, "LoxVariable::run_std_function called with non tuple argument, likely an internal error"));
+        }
+        let inner_fn = match &self.variable_type {
+            LoxVariableType::STD_FUNCTION(f) => *f,
+            _ => {
+                return Err(ErrorLox::from_lox_variable(self, "LoxVariable::run_std_function called on a non std function, likely an internal error")
+                    );
+            }
+        };
+        Ok(inner_fn(input))
+    }
+
+    pub(crate) fn run_lox_function(&self, input: &LoxVariable) -> Result<LoxVariable, ErrorLox> {
+        if !input.is_tuple() {
+            return Err(ErrorLox::from_lox_variable(input, "LoxVariable::run_std_function called with non tuple argument, likely an internal error"));
+        }
+        let lox_fn = match &self.variable_type {
+            LoxVariableType::LOX_FUNCTION(f) => f,
+            _ => {
+                return Err(ErrorLox::from_lox_variable(self, "LoxVariable::run_std_function called on a non std function, likely an internal error")
+                )
+            }
+        };
+        let input_length = input.get_tuple_length().unwrap();
+        let expected_length = lox_fn.get_lexeme_length();
+
+        if input_length != expected_length {
+            return Err(ErrorLox::from_lox_variable(
+                input,
+                &format!("Expected {expected_length} inputs, found {input_length}. LoxVariable::run_lox_function"),
+            ));
+        }
+
+        let lexemes = lox_fn.get_lexeme();
+        let input_content = input.get_tuple_content().unwrap();
+        for i in 0..lexemes.len() {
+            let tmp = LoxVariable::new(
+                Some(lexemes[i].clone()),
+                input_content[i].get_type(),
+                input_content[i].get_ref_node(),
+            );
+            stack::stack_push(tmp);
+        }
+        runtime::run(lox_fn.get_content())
+    }
+
     pub(crate) fn is_tuple(&self) -> bool {
         match &self.variable_type {
             LoxVariableType::TUPLE(_) => true,
