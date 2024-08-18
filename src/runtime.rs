@@ -637,8 +637,6 @@ fn eval_expr(node: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
         }
         AST_Type::Identifier => {
             let lexeme = AST_Node::get_token_lexeme_arc_mutex(node.clone());
-            // let variable: &LoxVariable;
-            // stack_get!(variable, &lexeme, node);
             let variable = stack_get_variable(&lexeme, node)?;
             let variable = variable.lock().unwrap();
             return Ok(variable.clone());
@@ -1034,7 +1032,8 @@ pub(crate) fn run(tree: Arc<Mutex<AST_Node>>) -> Result<LoxVariable, ErrorLox> {
         AST_Type::Expr(ExprType::Normal)
         | AST_Type::Expr(ExprType::Paren)
         | AST_Type::Expr(ExprType::Negated)
-        | AST_Type::Expr(ExprType::Function) => {
+        | AST_Type::Expr(ExprType::Function)
+        | AST_Type::Identifier => {
             return eval_expr(tree.clone());
         }
         AST_Type::Tuple => {

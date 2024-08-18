@@ -18,6 +18,8 @@ use std::sync::{Arc, Mutex};
 //
 // the number of removed index is removed from $len
 // TODO: move this macro into a function
+// BUG: stmt sep, once removed, may leave lone expr 
+// EXPECTED BEHAVIOR: if the parsing is not executed, do not remove thje stmtsep
 #[macro_export]
 macro_rules! delete_stmt_sep_adjust_len {
     ($tree:expr, $idx:expr, $len:expr) => {
@@ -486,7 +488,8 @@ fn parse_function_eval(tree: &mut ParseTreeUnfinshed) -> ParseState {
             i += 1;
             continue;
         }
-        delete_stmt_sep_adjust_len!(tree, i + 1, length);
+        
+        // delete_stmt_sep_adjust_len!(tree, i + 1, length);
 
         // tree[i] is identifier, tree[i+1] is a valid node
         if i + 1 < length
