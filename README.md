@@ -1,6 +1,6 @@
 # An interpreter from scrath using rust
 
-This is a didactice just-in-time interpreter written in rust, inspired by the book crafting interpreters.
+This is a didactic just-in-time interpreter written in rust, inspired by the book crafting interpreters.
 
 The mock programming language being implemented is lox, a dynamically typed language with grammar similar to python with a few exceptions: 
 
@@ -33,7 +33,7 @@ while i < 1000 {
 }
 ```
 
-I created this lox language (The name came from crafting interpreters), and its full specification can be found [here](./doc/lox/grammar.md)
+I created this lox language (The name came from crafting interpreters), and its full specification can be found [here](./docs/lox/grammar.md)
 
 ## Organization
 

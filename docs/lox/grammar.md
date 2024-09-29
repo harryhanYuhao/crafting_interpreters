@@ -22,7 +22,7 @@ This is a comphrehensive grammar for lox. For tutorial, check [tutorial.md](tuto
 | `<`              | Less than          | Left          |
 | `<=`             | Less or equal      | Left          |
 | `&&`             | Logical AND        | Left          |
-| `||`             | Logical OR         | Left          |
+| `&#124;&#124;`   | Logical OR         | Left          |
 | `!`              | Logical NOT        | Right         |
 | `=`              | Assignment         | Right         |
 |`( )`             | Parenthesis        | NA            |
@@ -52,9 +52,11 @@ Left associativity means operations starts from left to the right.
 
 ## Syntax 
 
-Each line is a statement. End of statement does not need to have ``;``. 
+Each line is a statement. `;` is the optional end of statement marker.
 
 ## Types 
+
+All variables are dynamically typed. The typed are automatically inferred.
 
 Lox has the following types:
 
@@ -73,10 +75,7 @@ var a = 10
 var message = "Aha"
 ```
 
-Types are automatically inferred during declaration.
-
 Variables must be declared before use.
-
 
 ## Order of Precedence
 
